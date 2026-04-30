@@ -1,0 +1,14 @@
+[Unit]
+Description=SORCC — bring Tailscale up on first boot using pre-shared authkey
+After=tailscaled.service network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/default/tailscale
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=/etc/default/tailscale
+ExecStart=/usr/bin/tailscale up --authkey=${TAILSCALE_AUTHKEY} --hostname=%H --ssh --accept-routes
+
+[Install]
+WantedBy=multi-user.target

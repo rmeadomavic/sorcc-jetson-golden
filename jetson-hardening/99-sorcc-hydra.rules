@@ -1,0 +1,17 @@
+# SORCC Hydra — USB device permissions and stable symlinks
+
+# RTL-SDR (Realtek DVB-T dongles, common RTL2832U variants)
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0bda", ATTRS{idProduct}=="2838", GROUP="plugdev", MODE="0666", SYMLINK+="rtl_sdr"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0bda", ATTRS{idProduct}=="2832", GROUP="plugdev", MODE="0666", SYMLINK+="rtl_sdr"
+
+# Pixhawk / CubePilot / Holybro / generic 3DR-style autopilots.
+# Pixhawk6C / Holybro boards expose two USB interfaces (if00 primary, if02
+# secondary). Symlink only if00 to /dev/autopilot.
+SUBSYSTEM=="tty", ATTRS{idVendor}=="26ac", SYMLINK+="autopilot", GROUP="dialout", MODE="0660"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2dae", SYMLINK+="autopilot", GROUP="dialout", MODE="0660"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1209", ATTRS{idProduct}=="5741", SYMLINK+="autopilot", GROUP="dialout", MODE="0660"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="3162", ENV{ID_USB_INTERFACE_NUM}=="00", SYMLINK+="autopilot", GROUP="dialout", MODE="0660"
+
+# FTDI generic (telemetry radios, GPS pucks, FT232-based bridges)
+SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", SYMLINK+="ftdi%n", GROUP="dialout", MODE="0660"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6015", SYMLINK+="ftdi%n", GROUP="dialout", MODE="0660"

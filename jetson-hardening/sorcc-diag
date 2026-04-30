@@ -1,0 +1,52 @@
+#!/bin/bash
+# sorcc-diag — collect a snapshot of a student Jetson's state for remote debugging
+# Usage: sudo sorcc-diag [outdir]
+# Emits /tmp/sorcc-diag-<hostname>-<epoch>.tar.gz by default.
+
+set -u
+OUTDIR="${1:-/tmp}"
+STAMP="$(date +%Y%m%d-%H%M%S)"
+NAME="sorcc-diag-$(hostname)-${STAMP}"
+WORK="$(mktemp -d)"
+DEST="${WORK}/${NAME}"
+mkdir -p "${DEST}"
+
+run() { local f="${DEST}/$1"; shift; { echo "# $*"; "$@"; } >"${f}" 2>&1 || true; }
+
+run hostname.txt         hostname
+run os-release.txt       cat /etc/os-release
+run uname.txt            uname -a
+run nvpmodel.txt         nvpmodel -q
+run jetson_release.txt   jetson_release -v
+run free.txt             free -h
+run df.txt               df -h
+run swap.txt             swapon --show
+run uptime.txt           uptime
+run cpuinfo.txt          cat /proc/cpuinfo
+run meminfo.txt          cat /proc/meminfo
+run ip-a.txt             ip a
+run ip-route.txt         ip route
+run nmcli-dev.txt        nmcli device show
+run nmcli-conn.txt       nmcli -f NAME,UUID,TYPE,DEVICE connection show
+run iw-dev.txt           iw dev
+run tailscale.txt        tailscale status
+run docker-ps.txt        docker ps -a
+run docker-images.txt    docker images
+run docker-info.txt      docker info
+run ollama-list.txt      ollama list
+run systemctl-failed.txt systemctl --failed
+run journal-boot.txt     journalctl -b -n 500 --no-pager
+run journal-kernel.txt   journalctl -k -n 500 --no-pager
+run journal-NM.txt       journalctl -u NetworkManager -n 300 --no-pager
+run dmesg.txt            dmesg
+run lsusb.txt            lsusb
+run serial-by-id.txt     ls -l /dev/serial/by-id/
+run video-devs.txt       ls -l /dev/video*
+run v4l2-devs.txt        v4l2-ctl --list-devices
+run autopilot-link.txt   ls -l /dev/autopilot /dev/rtl_sdr
+run hydra-logs.txt       bash -c 'docker logs hydra-detect --tail 200 2>&1 || true'
+run env.txt              env
+
+tar -C "${WORK}" -czf "${OUTDIR}/${NAME}.tar.gz" "${NAME}"
+rm -rf "${WORK}"
+echo "Wrote ${OUTDIR}/${NAME}.tar.gz"
