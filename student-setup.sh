@@ -336,6 +336,17 @@ log "Regenerating /etc/machine-id..."
 rm -f /etc/machine-id
 systemd-machine-id-setup
 
+# ─── J.1 Clear stale Chromium snap profile lock from golden image ───────────
+# SingletonLock symlinks to <hostname>-<pid>; if the hostname doesn't match
+# the box currently running, snap's chromium refuses to launch silently.
+CHROMIUM_PROFILE="/home/sorcc/snap/chromium/common/chromium"
+if [ -d "${CHROMIUM_PROFILE}" ]; then
+    log "Clearing stale Chromium singleton lock from golden image..."
+    rm -f "${CHROMIUM_PROFILE}/SingletonLock" \
+          "${CHROMIUM_PROFILE}/SingletonCookie" \
+          "${CHROMIUM_PROFILE}/SingletonSocket"
+fi
+
 # ─── K. Point to Hydra's own setup for Docker build + hardware config ───────
 echo ""
 echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
