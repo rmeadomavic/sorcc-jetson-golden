@@ -4,16 +4,16 @@ Recipe, scripts, and acceptance procedure for the SORCC AI Kit: Jetson Orin Nano
 student kits running Language (Ollama), Imagery (ComfyUI), and Detection (Hydra) behind
 one launcher, one heavy tool at a time on 8 GB.
 
-Two class eras live here. Read the right one.
+Two methods live here. Use the current one.
 
-| Era | Method | Where |
+| Method | Approach | Where |
 |---|---|---|
-| **Class 03-26 (current)** | In-place provisioning from a locked payload. No raw disk clone. | `docs/`, `scripts/` |
-| Class 02-26 (superseded) | Golden SD image + `dd` clone + first-boot `student-setup.sh` | `class-02-26/` |
+| **Current** | In-place provisioning from a locked payload. No raw disk clone. | `docs/`, `scripts/` |
+| Legacy (superseded) | Golden SD image + `dd` clone + first-boot `student-setup.sh` | `legacy-clone-method/` |
 
-Do not build a new fleet from the 02-26 clone method. It was replaced because cloning
-carries machine IDs, SSH host keys, and credentials to every kit. The 03-26 method
-preserves each target's identity and provisions the application payload onto it.
+Do not build a new fleet from the clone method. It was replaced because cloning carries
+machine IDs, SSH host keys, and credentials to every kit. The current method preserves
+each target's identity and provisions the application payload onto it.
 
 ## Start here
 
@@ -30,16 +30,16 @@ preserves each target's identity and provisions the application payload onto it.
 
 | Path | Purpose |
 |---|---|
-| `docs/provisioning-runbook.md` | Canonical CLS 03-26 provisioning, acceptance, cleanup, and shutdown procedure |
+| `docs/provisioning-runbook.md` | Canonical provisioning, acceptance, cleanup, and shutdown procedure |
 | `docs/class-image-spec.md` | Student-facing Hydra scope, build spec, and RF boundary |
 | `scripts/sorcc-target-finalize.sh` | Reusable per-unit finalizer (payload, services, identity, desktop) |
 | `scripts/sorcc-jetson-smoke-test.sh` | Per-kit software acceptance test |
 | `scripts/sorcc_launcher.py` | The student front door on `:8090`. Pure stdlib, no venv. |
-| `scripts/ollama_setup.sh` | Ollama install + `qwen3:4b-instruct` pull (the 2026-08-03 model swap) |
+| `scripts/ollama_setup.sh` | Ollama install + `qwen3:4b-instruct` pull |
 | `scripts/refresh_workflow_copy.py` | Applies reviewed student copy to the three shipped ComfyUI workflows |
 | `scripts/workflows/` | The three curated ComfyUI workflows students see |
 | `scripts/history/` | Executed one-shot scripts, kept as record. Host-locked. See its README. |
-| `class-02-26/` | The full superseded 02-26 clone recipe, unmodified |
+| `legacy-clone-method/` | The full superseded clone recipe, unmodified |
 | `assets/` | Bench-test source videos for camera-less detection testing |
 
 ## Facts that bite

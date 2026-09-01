@@ -1,4 +1,4 @@
-# CLS 03-26 Jetson Class Image and Hydra Scope
+# Jetson Class Image and Hydra Scope
 
 The build and scope specification for the AI-module Jetson kits. Defines exactly what
 Hydra surface students touch and what stays dark. The executable process is

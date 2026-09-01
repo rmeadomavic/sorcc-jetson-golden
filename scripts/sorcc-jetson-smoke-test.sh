@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# sorcc-jetson-smoke-test.sh - per-kit acceptance test for the CLS 03-26 AI image.
+# sorcc-jetson-smoke-test.sh - per-kit acceptance test for the SORCC AI Kit image.
 #
 # Run after flashing and first-boot identity setup, with the USB camera connected:
 #   sudo /opt/sorcc/sorcc-jetson-smoke-test.sh
@@ -59,7 +59,7 @@ raise SystemExit(0 if x.get('active') == sys.argv[1] and active == [sys.argv[1]]
 PY
 }
 
-echo "SORCC CLS 03-26 Jetson acceptance: $(hostname)"
+echo "SORCC Jetson acceptance: $(hostname)"
 
 hdr "1. Base platform"
 if [[ -f /etc/nv_tegra_release ]]; then

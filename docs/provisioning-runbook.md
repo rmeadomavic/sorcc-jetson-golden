@@ -1,8 +1,8 @@
 # SORCC Jetson Fleet Provisioning Runbook
 
-Instructor runbook for reproducing the CLS 03-26 SORCC AI Kit on Jetson Orin Nano Super
-developer kits. Written 2026-07-22 against the deployed three-kit fleet; updated
-2026-09-01 for the qwen3:4b-instruct model swap. The student-facing scope lives in
+Instructor runbook for reproducing the SORCC AI Kit on Jetson Orin Nano Super developer
+kits. Written 2026-07-22 against the deployed three-kit fleet; updated 2026-09-01 for
+the qwen3:4b-instruct model swap. The student-facing scope lives in
 `class-image-spec.md`.
 
 > **Proven rollout method.** Provision each target **in place from the locked payload**.
@@ -11,7 +11,7 @@ developer kits. Written 2026-07-22 against the deployed three-kit fleet; updated
 > cloning credentials and browser state. QSPI firmware lives on each Jetson and must be
 > checked per device regardless of how the root filesystem is populated.
 
-## Final fleet baseline (CLS 03-26)
+## Deployed fleet baseline
 
 | Team | Hostname | Linux user | Hydra callsign | Root media |
 |---|---|---|---|---|
@@ -334,7 +334,7 @@ Cleanup checklist:
 - truncate or remove instructor login traces according to the privacy audit
 - run `sync`
 
-The guarded host-specific cleanup scripts from the 03-26 rollout are in
+The guarded host-specific cleanup scripts from the original rollout are in
 `scripts/history/` as worked examples. Write a new reviewed script per target; do not
 substitute an unreviewed recursive delete for allowlisted paths.
 
@@ -368,7 +368,7 @@ sudo systemctl poweroff
 Wait for SSH to disappear and the board to complete shutdown before removing power.
 Record which physical team was powered down; do not infer it from a stale DHCP lease.
 
-## Known-good measurements (CLS 03-26 acceptance)
+## Known-good measurements (deployed fleet acceptance)
 
 | Unit | Detection | START HERE render | Acceptance |
 |---|---|---|---|
@@ -395,8 +395,10 @@ The `scripts/history/` copies of the cleanup and scrub scripts match these hashe
 byte-for-byte. Two current scripts have moved past the 2026-07-22 record:
 
 - `scripts/sorcc-jetson-smoke-test.sh` now hashes
-  `6a4479df38ad994fc2b463f0aef5111e1279d6dff320548eb7a4f5a9f9eb9421` (2026-08-03 qwen
-  swap; this version ran the fleet re-acceptance).
+  `b61b7ead9d8c0a6469e6c074ecffe9a59f927e2a263881c74756c01a260d09d2`. The 2026-08-03
+  qwen-swap version that ran the fleet re-acceptance hashed
+  `6a4479df38ad994fc2b463f0aef5111e1279d6dff320548eb7a4f5a9f9eb9421`; the repo copy
+  differs only in banner and comment text.
 - `scripts/sorcc-target-finalize.sh` was edited 2026-09-01 to require the
   `qwen3/4b-instruct` manifest instead of `llama3.2/3b`. **This edit has not run on
   hardware.** Recompute its hash and re-verify on a bench unit before the next fleet
