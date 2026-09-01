@@ -4,61 +4,62 @@ Recipe, scripts, and acceptance procedure for the SORCC AI Kit: Jetson Orin Nano
 student kits running Language (Ollama), Imagery (ComfyUI), and Detection (Hydra) behind
 one launcher, one heavy tool at a time on 8 GB.
 
-Two methods live here. Use the current one.
+Use the current provisioning method. The superseded clone method stays for reference.
 
 | Method | Approach | Where |
 |---|---|---|
-| **Current** | In-place provisioning from a locked payload. No raw disk clone. | `docs/`, `scripts/` |
-| Legacy (superseded) | Golden SD image + `dd` clone + first-boot `student-setup.sh` | `legacy-clone-method/` |
+| **Current** | Provision each kit in place from the verified application payload. No raw disk clone. | `docs/`, `scripts/` |
+| Legacy (superseded) | Golden SD image, `dd` clone, first-boot `student-setup.sh` | `legacy-clone-method/` |
 
-Do not build a new fleet from the clone method. It was replaced because cloning carries
-machine IDs, SSH host keys, and credentials to every kit. The current method preserves
-each target's identity and provisions the application payload onto it.
+The clone method was retired because cloning duplicates machine IDs, SSH host keys, and
+stored credentials across kits. The current method installs the application payload
+without copying identity or credential state between units.
 
 ## Start here
 
-1. `docs/provisioning-runbook.md` is the executable procedure: identify the target,
-   bring firmware to baseline, stage the payload, finalize, run acceptance, clean up.
+1. `docs/provisioning-runbook.md` is the procedure: identify the target, update
+   firmware, stage the payload, finalize, run acceptance, clean up.
 2. `docs/class-image-spec.md` defines the student-facing scope: what students touch,
-   what ships dark in config, and what never surfaces.
-3. `scripts/sorcc-target-finalize.sh` does the per-unit install. It generates a unique
-   Hydra token per kit and refuses to run with missing artifacts.
-4. `scripts/sorcc-jetson-smoke-test.sh` is the acceptance gate: 24 checks across all
-   three tools, exclusivity, and Stop All.
+   what ships disabled in config, and what stays off student kits entirely.
+3. `scripts/sorcc-target-finalize.sh` does the per-unit install. It exits if any
+   required artifact is missing.
+4. `scripts/sorcc-jetson-smoke-test.sh` is the acceptance gate: 24 checks covering all
+   three tools, the one-tool-at-a-time rule, and the Stop All control.
 
 ## Repo map
 
 | Path | Purpose |
 |---|---|
-| `docs/provisioning-runbook.md` | Canonical provisioning, acceptance, cleanup, and shutdown procedure |
+| `docs/provisioning-runbook.md` | Provisioning, acceptance, cleanup, and shutdown procedure |
 | `docs/class-image-spec.md` | Student-facing Hydra scope, build spec, and RF boundary |
-| `scripts/sorcc-target-finalize.sh` | Reusable per-unit finalizer (payload, services, identity, desktop) |
+| `scripts/sorcc-target-finalize.sh` | Reusable per-unit finalizer (payload, services, callsign and token, desktop) |
 | `scripts/sorcc-jetson-smoke-test.sh` | Per-kit software acceptance test |
-| `scripts/sorcc_launcher.py` | The student front door on `:8090`. Pure stdlib, no venv. |
-| `scripts/ollama_setup.sh` | Ollama install + `qwen3:4b-instruct` pull |
-| `scripts/refresh_workflow_copy.py` | Applies reviewed student copy to the three shipped ComfyUI workflows |
+| `scripts/sorcc_launcher.py` | Student launcher on port 8090. Pure stdlib, no venv. |
+| `scripts/ollama_setup.sh` | Ollama install and `qwen3:4b-instruct` pull |
+| `scripts/refresh_workflow_copy.py` | Applies approved student-facing text to the three included ComfyUI workflows |
 | `scripts/workflows/` | The three curated ComfyUI workflows students see |
-| `scripts/history/` | Executed one-shot scripts, kept as record. Host-locked. See its README. |
-| `legacy-clone-method/` | The full superseded clone recipe, unmodified |
+| `scripts/history/` | One-shot scripts already executed, kept as record. Host-locked. See its README. |
+| `legacy-clone-method/` | The superseded clone recipe, unmodified |
 | `assets/` | Bench-test source videos for camera-less detection testing |
 
-## Facts that bite
+## Constraints
 
-- **The LLM is `qwen3:4b-instruct`.** Swapped from `llama3.2:3b` on 2026-08-03 because
-  the Meta AUP prohibits military use. Never pull the plain `qwen3:4b` alias; it
-  resolves to a thinking-only model that exhausts its output budget without answering.
-- **QSPI firmware is per-Jetson.** No disk image or payload transfer carries it. Check
-  and update both slots on every physical unit.
-- **8 GB means one heavy tool at a time.** The launcher enforces it. Do not "fix" this.
-- **256 by 256 is the ComfyUI memory guard**, not a quality preference. SDXL and
+- The LLM is `qwen3:4b-instruct`, swapped from `llama3.2:3b` on 2026-08-03 because the
+  Meta acceptable-use policy prohibits military use. Never pull the plain `qwen3:4b`
+  alias; it resolves to a thinking-only model that exhausts its output budget without
+  answering.
+- QSPI firmware is per-Jetson. No disk image or payload transfer carries it. Check and
+  update both QSPI slots on every physical unit.
+- 8 GB means one heavy tool at a time. The launcher enforces it; do not disable it.
+- 256 by 256 is the ComfyUI memory guard, not a quality preference. SDXL and
   1024-pixel latents exhaust memory on these kits.
 - The Hydra application pin is the container digest, not a git tag:
   `ghcr.io/rmeadomavic/hydra-detect@sha256:8b820cbe5edbb033c2633de67b43f6c1ad576785a27a05b4b4221b059451855d`.
-- Hydra source: <https://github.com/rmeadomavic/Hydra>.
+  Hydra source: <https://github.com/rmeadomavic/Hydra>.
 
-## What is deliberately not here
+## Not in this repo
 
-No Tailscale authkeys, no account credentials, no per-unit Hydra tokens, no instructor
-SSH private keys. Per-unit tokens are generated at finalize time and reported only as a
-hash. The class Linux password is the standard classroom default and is printed on the
-kit cards, not managed here.
+Tailscale auth keys, account credentials, per-unit Hydra tokens, and instructor SSH
+private keys. The finalizer generates each kit's token and prints only its hash, never
+the token itself. The class Linux password is the standard classroom default printed on
+the kit cards.
