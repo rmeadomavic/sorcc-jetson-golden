@@ -1,65 +1,66 @@
-# sorcc-jetson-golden
+# SORCC AI Kit — Jetson Setup
 
-Recipe, scripts, and acceptance procedure for the SORCC AI Kit: Jetson Orin Nano Super
-student kits running Language (Ollama), Imagery (ComfyUI), and Detection (Hydra) behind
-one launcher, one heavy tool at a time on 8 GB.
+Three student Jetson kits (Team 1, 2, 3). Each runs Language (Ollama), Imagery
+(ComfyUI), and Detection (Hydra) behind one launcher page, one tool at a time.
+Students double-click the desktop shortcut; everything else is already installed.
 
-Use the current provisioning method. The superseded clone method stays for reference.
+## Before the course: check the existing kits
 
-| Method | Approach | Where |
-|---|---|---|
-| **Current** | Provision each kit in place from the verified application payload. No raw disk clone. | `docs/`, `scripts/` |
-| Legacy (superseded) | Golden SD image, `dd` clone, first-boot `student-setup.sh` | `legacy-clone-method/` |
+The three kits are built and accepted. For each one:
 
-The clone method was retired because cloning duplicates machine IDs, SSH host keys, and
-stored credentials across kits. The current method installs the application payload
-without copying identity or credential state between units.
+1. Power on, connect the USB camera, and log in. The password is the classroom
+   default printed on the kit card.
+2. Run the acceptance test:
 
-## Start here
+   ```bash
+   sudo /opt/sorcc/sorcc-jetson-smoke-test.sh
+   ```
 
-1. `docs/provisioning-runbook.md` is the procedure: identify the target, update
-   firmware, stage the payload, finalize, run acceptance, clean up.
-2. `docs/class-image-spec.md` defines the student-facing scope: what students touch,
-   what ships disabled in config, and what stays off student kits entirely.
-3. `scripts/sorcc-target-finalize.sh` does the per-unit install. It exits if any
-   required artifact is missing.
-4. `scripts/sorcc-jetson-smoke-test.sh` is the acceptance gate: 24 checks covering all
-   three tools, the one-tool-at-a-time rule, and the Stop All control.
+   Expect 24 passes, 0 failures. One warning appears if the camera sees no
+   recognizable object; put a person in frame and re-run to clear it.
+3. Double-click **SORCC AI Kit** on the desktop and walk through the checks in
+   runbook step 9: all three tools respond, the browser opens clean, Stop All
+   releases RAM and the camera.
 
-## Repo map
+If all three kits pass, you are done. Issue them.
 
-| Path | Purpose |
-|---|---|
-| `docs/provisioning-runbook.md` | Provisioning, acceptance, cleanup, and shutdown procedure |
-| `docs/class-image-spec.md` | Student-facing Hydra scope, build spec, and RF boundary |
-| `scripts/sorcc-target-finalize.sh` | Reusable per-unit finalizer (payload, services, callsign and token, desktop) |
-| `scripts/sorcc-jetson-smoke-test.sh` | Per-kit software acceptance test |
-| `scripts/sorcc_launcher.py` | Student launcher on port 8090. Pure stdlib, no venv. |
-| `scripts/ollama_setup.sh` | Ollama install and `qwen3:4b-instruct` pull |
-| `scripts/refresh_workflow_copy.py` | Applies approved student-facing text to the three included ComfyUI workflows |
-| `scripts/workflows/` | The three curated ComfyUI workflows students see |
-| `scripts/history/` | One-shot scripts already executed, kept as record. Host-locked. See its README. |
-| `legacy-clone-method/` | The superseded clone recipe, unmodified |
-| `assets/` | Bench-test source videos for camera-less detection testing |
+## If a kit is broken or you need a new one
 
-## Constraints
+Follow `docs/provisioning-runbook.md` top to bottom; it has every command. The
+sequence:
 
-- The LLM is `qwen3:4b-instruct`, swapped from `llama3.2:3b` on 2026-08-03 because the
-  Meta acceptable-use policy prohibits military use. Never pull the plain `qwen3:4b`
-  alias; it resolves to a thinking-only model that exhausts its output budget without
-  answering.
-- QSPI firmware is per-Jetson. No disk image or payload transfer carries it. Check and
-  update both QSPI slots on every physical unit.
-- 8 GB means one heavy tool at a time. The launcher enforces it; do not disable it.
-- 256 by 256 is the ComfyUI memory guard, not a quality preference. SDXL and
-  1024-pixel latents exhaust memory on these kits.
-- The Hydra application pin is the container digest, not a git tag:
-  `ghcr.io/rmeadomavic/hydra-detect@sha256:8b820cbe5edbb033c2633de67b43f6c1ad576785a27a05b4b4221b059451855d`.
-  Hydra source: <https://github.com/rmeadomavic/Hydra>.
+1. Confirm you are on the right physical Jetson (hostname, user, host key).
+2. Update to JetPack 6.2.2 / L4T 36.4.7 and bring both QSPI firmware slots to
+   36.4.7. QSPI is per-board; no image carries it. (Runbook step 3.)
+3. Install Chromium (snap).
+4. Copy the application payload from a working kit to `~/sorcc-stage/` over the LAN,
+   and load the two Docker images. Runbook step 5 lists the exact tree and image pins.
+5. Copy `scripts/sorcc-target-finalize.sh` from this repo to the target and run it:
 
-## Not in this repo
+   ```bash
+   sudo ./sorcc-target-finalize.sh "$(id -un)" HYDRA-N
+   ```
 
-Tailscale auth keys, account credentials, per-unit Hydra tokens, and instructor SSH
-private keys. The finalizer generates each kit's token and prints only its hash, never
-the token itself. The class Linux password is the standard classroom default printed on
-the kit cards.
+   `N` is the team number. The script checks its own prerequisites and stops if
+   anything is missing. Note: this copy was updated for the qwen model swap and has
+   not been re-run on hardware yet; see the hash note at the end of the runbook.
+6. Run the acceptance test and the desktop check from the section above.
+7. Delete `~/sorcc-stage/`, remove transfer keys, and finish the cleanup checklist
+   in runbook step 10.
+
+## Rules that matter
+
+- The LLM is `qwen3:4b-instruct`. Never `llama3.2:3b` (Meta license prohibits military
+  use) and never plain `qwen3:4b` (thinking model, hangs instead of answering).
+- One heavy tool at a time. 8 GB is not enough for two. The launcher enforces this;
+  do not disable it.
+- Keep ComfyUI images at 256 x 256. Bigger runs out of memory.
+- Never `dd`-clone a kit's SD card to another kit. It copies the machine's identity and
+  credentials. That is why the `legacy-clone-method/` folder is retired.
+
+## More detail
+
+- `docs/provisioning-runbook.md` — the full procedure with every command and gate
+- `docs/class-image-spec.md` — what students may touch and what stays disabled
+- `scripts/` — the installer, acceptance test, launcher, and student workflows
+- Hydra source: <https://github.com/rmeadomavic/Hydra>
