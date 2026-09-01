@@ -47,7 +47,7 @@ else
 
 ${YEL}This will reset this Jetson to a neutral golden-image state.${NC}
 It will:
-  * Log you out of Tailscale (kyle.adomavicius@gmail.com)
+  * Log you out of Tailscale (the instructor account)
   * Delete your Claude Code session (~/.claude, ~/.claude.json)
   * Delete the adomavic WiFi profile and CHIMERA static IP
   * Reset hostname to "hydra-golden"

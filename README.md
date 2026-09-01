@@ -1,85 +1,64 @@
 # sorcc-jetson-golden
 
-Recipe and operator notes for the SORCC Class 02-26 Jetson Orin Nano Super
-golden SD card image. **This repo is the source of truth — the binary
-image is regenerable from these scripts and pinned references.**
+Recipe, scripts, and acceptance procedure for the SORCC AI Kit: Jetson Orin Nano Super
+student kits running Language (Ollama), Imagery (ComfyUI), and Detection (Hydra) behind
+one launcher, one heavy tool at a time on 8 GB.
 
-## What's in here
+Two class eras live here. Read the right one.
 
-| File | Purpose |
-|---|---|
-| `student-setup.sh` | First-boot script run on each cloned student Jetson. Sets hostname, static IP, installs Docker/Ollama/Tailscale, applies hardening. Idempotent. |
-| `pre-clone-wipe.sh` | Run on the golden image immediately before pulling the SD card for cloning. Wipes machine-id, SSH host keys, shell history, GNOME caches, etc. `DRY_RUN=1` previews. |
-| `jetson-hardening/` | Drop-in configs + `apply-hardening.sh` baseline (journald cap, Docker live-restore, swap, udev rules for SDR + autopilot, `sorcc-diag` collector). Wired into `student-setup.sh` section B.6. |
-| `CLONING.md` | Step-by-step procedure: wipe golden → `dd` to image → flash student cards → first-boot setup. |
-| `PRE-CLONE-TODO.md` | Open decisions before the next clone run + session-by-session changelog of what was added/fixed on the golden image. |
-| `STUDENT-README.md` | The `README.md` that ships *on* the student SD card (gets symlinked to `~/README.md` on the Jetson). |
-
-## Symlinks on the live Jetson
-
-These files live in this directory but are symlinked into `/home/sorcc/`
-so existing absolute paths (`/home/sorcc/student-setup.sh`,
-`/home/sorcc/pre-clone-wipe.sh`, etc.) keep working:
-
-```
-/home/sorcc/student-setup.sh    -> sorcc-jetson-golden/student-setup.sh
-/home/sorcc/pre-clone-wipe.sh   -> sorcc-jetson-golden/pre-clone-wipe.sh
-/home/sorcc/CLONING.md          -> sorcc-jetson-golden/CLONING.md
-/home/sorcc/PRE-CLONE-TODO.md   -> sorcc-jetson-golden/PRE-CLONE-TODO.md
-/home/sorcc/jetson-hardening    -> sorcc-jetson-golden/jetson-hardening
-/home/sorcc/README.md           -> sorcc-jetson-golden/STUDENT-README.md
-```
-
-`pre-clone-wipe.sh` should leave these symlinks intact — verify if you
-edit the wipe script.
-
-## External references (not vendored here)
-
-| Thing | Where | Notes |
+| Era | Method | Where |
 |---|---|---|
-| Hydra Detect repo | https://github.com/rmeadomavic/Hydra | Cloned by `student-setup.sh`. **TODO:** pin to a specific SHA so future Hydra changes don't silently alter the student experience. |
-| `jetson-orin-servo/` | `/home/sorcc/jetson-orin-servo/` (own git repo) | Hardware PWM fix for the 40-pin header. Referenced from `PRE-CLONE-TODO.md` item 3. |
-| `dustynv/l4t-pytorch:r36.4.0` | Docker Hub | Pinned tag. Pre-pulled on golden image. |
-| `hydra-detect:latest` | Built locally on golden image | Built from the Hydra repo at clone time. **TODO:** tag with the Hydra SHA at build time so it's traceable. |
-| `llama3.2:1b` | Ollama registry | Pulled by `student-setup.sh`. Tag is unpinned. |
-| `yolov8n.engine` | `~/Hydra/models/yolov8n.engine` on golden image | FP16 TensorRT engine, ~9 MB. Rebuild if JetPack TRT version changes. |
+| **Class 03-26 (current)** | In-place provisioning from a locked payload. No raw disk clone. | `docs/`, `scripts/` |
+| Class 02-26 (superseded) | Golden SD image + `dd` clone + first-boot `student-setup.sh` | `class-02-26/` |
 
-## Known floats (things that can drift)
+Do not build a new fleet from the 02-26 clone method. It was replaced because cloning
+carries machine IDs, SSH host keys, and credentials to every kit. The 03-26 method
+preserves each target's identity and provisions the application payload onto it.
 
-These are dependencies that are *not* pinned to a specific version. If
-upstream changes, the golden image build can break or behave
-differently. Worth tightening before the next class:
+## Start here
 
-- Hydra repo HEAD (`student-setup.sh` does an unpinned `git clone`)
-- `apt` package versions for `cloud-guest-utils`, `btop`, `v4l-utils`,
-  Docker, Tailscale (whatever Ubuntu repos serve that day)
-- Ollama model tag `llama3.2:1b`
-- `pip install` lines inside `hydra-setup.sh` (chained from
-  `student-setup.sh` after Hydra is cloned)
+1. `docs/provisioning-runbook.md` is the executable procedure: identify the target,
+   bring firmware to baseline, stage the payload, finalize, run acceptance, clean up.
+2. `docs/class-image-spec.md` defines the student-facing scope: what students touch,
+   what ships dark in config, and what never surfaces.
+3. `scripts/sorcc-target-finalize.sh` does the per-unit install. It generates a unique
+   Hydra token per kit and refuses to run with missing artifacts.
+4. `scripts/sorcc-jetson-smoke-test.sh` is the acceptance gate: 24 checks across all
+   three tools, exclusivity, and Stop All.
 
-## Regenerating the image from scratch
+## Repo map
 
-Rough procedure for "the golden card died, rebuild it":
+| Path | Purpose |
+|---|---|
+| `docs/provisioning-runbook.md` | Canonical CLS 03-26 provisioning, acceptance, cleanup, and shutdown procedure |
+| `docs/class-image-spec.md` | Student-facing Hydra scope, build spec, and RF boundary |
+| `scripts/sorcc-target-finalize.sh` | Reusable per-unit finalizer (payload, services, identity, desktop) |
+| `scripts/sorcc-jetson-smoke-test.sh` | Per-kit software acceptance test |
+| `scripts/sorcc_launcher.py` | The student front door on `:8090`. Pure stdlib, no venv. |
+| `scripts/ollama_setup.sh` | Ollama install + `qwen3:4b-instruct` pull (the 2026-08-03 model swap) |
+| `scripts/refresh_workflow_copy.py` | Applies reviewed student copy to the three shipped ComfyUI workflows |
+| `scripts/workflows/` | The three curated ComfyUI workflows students see |
+| `scripts/history/` | Executed one-shot scripts, kept as record. Host-locked. See its README. |
+| `class-02-26/` | The full superseded 02-26 clone recipe, unmodified |
+| `assets/` | Bench-test source videos for camera-less detection testing |
 
-1. Flash a fresh JetPack 6 SD card via NVIDIA SDK Manager.
-2. Boot, log in as `sorcc`/`sorcc`.
-3. Clone this repo into `~/sorcc-jetson-golden/`.
-4. Re-create the symlinks listed above.
-5. Run `sudo bash student-setup.sh` (it'll do the same thing it does on
-   a student card — that's by design; the golden image *is* a
-   pre-cloned student image with cached apt/docker/model state).
-6. Pull the demos, ComfyUI, jetson-orin-servo, and any Drive-hosted
-   artifacts back down.
-7. Reboot, smoke-test, run `pre-clone-wipe.sh`, image, clone.
+## Facts that bite
 
-This procedure is incomplete — there's setup state on the live image
-that's not yet in any script (ComfyUI install, Claude Code install,
-demos, the `jetson-orin-servo/` clone, etc.). Building a real
-end-to-end `bootstrap.sh` is the next-level-up version of this repo.
+- **The LLM is `qwen3:4b-instruct`.** Swapped from `llama3.2:3b` on 2026-08-03 because
+  the Meta AUP prohibits military use. Never pull the plain `qwen3:4b` alias; it
+  resolves to a thinking-only model that exhausts its output budget without answering.
+- **QSPI firmware is per-Jetson.** No disk image or payload transfer carries it. Check
+  and update both slots on every physical unit.
+- **8 GB means one heavy tool at a time.** The launcher enforces it. Do not "fix" this.
+- **256 by 256 is the ComfyUI memory guard**, not a quality preference. SDXL and
+  1024-pixel latents exhaust memory on these kits.
+- The Hydra application pin is the container digest, not a git tag:
+  `ghcr.io/rmeadomavic/hydra-detect@sha256:8b820cbe5edbb033c2633de67b43f6c1ad576785a27a05b4b4221b059451855d`.
+- Hydra source: <https://github.com/rmeadomavic/Hydra>.
 
-## Updating this repo
+## What is deliberately not here
 
-Whenever you change something on the golden image that should persist
-into future clones — installed a package, tweaked a config, fixed a
-bug — commit it here. The repo is only useful if it stays in sync with
-the live image.
+No Tailscale authkeys, no account credentials, no per-unit Hydra tokens, no instructor
+SSH private keys. Per-unit tokens are generated at finalize time and reported only as a
+hash. The class Linux password is the standard classroom default and is printed on the
+kit cards, not managed here.
