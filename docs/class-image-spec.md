@@ -57,10 +57,10 @@ demo code, and blur the module boundary students are being taught.
 
 ## Build method: locked payload, per-device finalization
 
-The original clone-first plan was not used. All three physical kits boot from their own
-microSD cards and carry distinct hostnames and Linux accounts. Team3 became the verified
-payload source. Team1 and Team2 were provisioned in place so their machine IDs, SSH host
-keys, accounts, and CHIMERA profiles stayed unique.
+The original clone-first plan was not used. Each unit boots from its own microSD card
+with its own hostname and Linux account. One verified unit serves as the payload source;
+targets are provisioned in place so machine IDs, SSH host keys, accounts, and network
+profiles stay unique.
 
 The repeatable sequence:
 
@@ -81,14 +81,9 @@ The repeatable sequence:
 
 ## Reproducibility pin
 
-The deployed Hydra container digest is the authoritative application pin; no git tag
+The Hydra container digest is the authoritative application pin; no git tag
 exists for it. The local ComfyUI image ID and the three workflow files in
 `../scripts/workflows/` complete the pin set.
 
-## Fleet closeout, 2026-07-22
-
-- All three kits: issue-ready, 24 smoke passes, one covered manual warning, zero failures.
-- Browser and desktop path passed on the actual shortcut with a clean local profile.
-- Privacy pass: unique identity per kit; no Claude, Codex, or Tailscale state; transfer
-  artifacts removed.
-- Any future MMC or cache-flush error on a kit is a microSD replacement trigger.
+Units built to this spec are issued to students and leave with them at the end of the
+course. Any MMC or cache-flush error on a unit is a microSD replacement trigger.

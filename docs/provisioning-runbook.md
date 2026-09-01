@@ -1,8 +1,10 @@
-# SORCC Jetson Fleet Provisioning Runbook
+# SORCC Jetson Provisioning Runbook
 
-Instructor runbook for reproducing the SORCC AI Kit on Jetson Orin Nano Super developer
-kits. Written 2026-07-22 against the deployed three-kit fleet; updated 2026-09-01 for
-the qwen3:4b-instruct model swap. The student-facing scope lives in
+Instructor runbook for building the SORCC AI Kit on Jetson Orin Nano Super developer
+kits. Written 2026-07-22 during the original build; updated 2026-09-01 for the
+qwen3:4b-instruct model swap. Units built from this runbook are issued to students and
+leave with them, so every build is a fresh one; keep one provisioned unit back as the
+payload source for the next round. The student-facing scope lives in
 `class-image-spec.md`.
 
 > **Proven rollout method.** Provision each target **in place from the locked payload**.
@@ -11,17 +13,12 @@ the qwen3:4b-instruct model swap. The student-facing scope lives in
 > cloning credentials and browser state. QSPI firmware lives on each Jetson and must be
 > checked per device regardless of how the root filesystem is populated.
 
-## Deployed fleet baseline
+## Target baseline
 
-| Team | Hostname | Linux user | Hydra callsign | Root media |
-|---|---|---|---|---|
-| 1 | `team1-desktop` | `team1` | `HYDRA-1` | 128 GB-class microSD |
-| 2 | `sorcc2-desktop` | `sorcc2` | `HYDRA-2` | 128 GB-class microSD |
-| 3 | `sorcc3-desktop` | `sorcc3` | `HYDRA-3` | 128 GB-class microSD |
-
-All three deployed kits have JetPack 6.2.2 / L4T 36.4.7, QSPI 36.4.7 in both normal
-slots, MAXN_SUPER, a 1020 MHz GPU maximum, and no NVMe. Team3 was the payload source,
-not a disk-clone source.
+Every finished unit meets this state: JetPack 6.2.2 / L4T 36.4.7, QSPI 36.4.7 in both
+normal slots, MAXN_SUPER, a 1020 MHz GPU maximum, 128 GB-class microSD root, no NVMe.
+Each unit keeps its own hostname and Linux account and gets a unique `HYDRA-N` callsign.
+The payload source is an already-provisioned unit; it is never a disk-clone source.
 
 ## Locked application payload
 
@@ -94,7 +91,7 @@ Required before provisioning:
 - no unexpected Claude, Codex, Tailscale, keyring, or browser-account state
 
 Do not repair a mounted root filesystem. Any future MMC or cache-flush error on a
-deployed kit is a microSD replacement trigger, not a repair job.
+provisioned unit is a microSD replacement trigger, not a repair job.
 
 ## 3. Bring L4T and both QSPI slots to the baseline
 
@@ -126,7 +123,7 @@ Run it once from each active slot, rebooting after each run, until `nvbootctrl` 
 
 - QSPI 36.4.7 in slots A and B
 - both slots normal
-- slot B current and active for the deployed fleet baseline
+- slot B current and active
 - no persistent reboot marker
 
 QSPI is per Jetson. A disk image cannot carry this update to another unit.
@@ -259,10 +256,10 @@ Rules:
 - machine ID, SSH host keys, and Hydra token are unique per unit
 - CHIMERA remains present before removing any alternate remote-access path
 
-`scripts/history/team3-final-scrub.sh` is deliberately host-locked and destructive. It
-was needed because Team3 had been an instructor build box. Do not run it unchanged on
-another hostname. The Team1 and Team2 cleanup scripts are also host-specific and must be
-reviewed before reuse.
+The scrub and cleanup scripts in `scripts/history/` are host-locked one-shots from the
+original build. They show the shape of a correct scrub (the full scrub exists because the
+source unit had been an instructor build box). Review and adapt; never run one unchanged
+on a different hostname.
 
 ## 8. Run software acceptance
 
@@ -351,7 +348,7 @@ substitute an unreviewed recursive delete for allowlisted paths.
 | Browser | actual desktop shortcut opens clean local Chromium profile |
 | Language | exact streaming pass response; Enter and Send work |
 | Imagery | real 256 by 256 PNG from START HERE workflow in roughly 40 to 60 seconds |
-| Detection | healthy live C270 image; roughly 31 to 39 FPS on the accepted fleet |
+| Detection | healthy live C270 image; roughly 31 to 39 FPS on accepted units |
 | Controls | one heavy tool at a time; Stop All works |
 | Student copy | professional bench language; no developer register; GENERATED rule stays in Imagery context |
 
@@ -368,14 +365,10 @@ sudo systemctl poweroff
 Wait for SSH to disappear and the board to complete shutdown before removing power.
 Record which physical team was powered down; do not infer it from a stale DHCP lease.
 
-## Known-good measurements (deployed fleet acceptance)
+## Known-good measurements
 
-| Unit | Detection | START HERE render | Acceptance |
-|---|---|---|---|
-| Team1 | 34.2 FPS, 25.2 ms | 48.9 s during initial acceptance | 24 pass, 1 manual warning, 0 fail |
-| Team2 | 37.1 FPS, 23.4 ms | 46.7 s on final full run | 24 pass, 1 manual warning, 0 fail |
-| Team3 | 38.1 FPS, 23.2 ms | 49.4 s on final full run | 24 pass, 1 manual warning, 0 fail |
-
+Accepted units measured 34 to 38 FPS detection at 23 to 26 ms inference, 46 to 50 second
+START HERE renders, and 24 acceptance passes with one manual warning and zero failures.
 These are microSD systems. NVMe improves cold-load and filesystem responsiveness but does
 not change the required 256-pixel ComfyUI memory guard.
 
@@ -396,12 +389,11 @@ byte-for-byte. Two current scripts have moved past the 2026-07-22 record:
 
 - `scripts/sorcc-jetson-smoke-test.sh` now hashes
   `b61b7ead9d8c0a6469e6c074ecffe9a59f927e2a263881c74756c01a260d09d2`. The 2026-08-03
-  qwen-swap version that ran the fleet re-acceptance hashed
+  qwen-swap version that ran the re-acceptance hashed
   `6a4479df38ad994fc2b463f0aef5111e1279d6dff320548eb7a4f5a9f9eb9421`; the repo copy
   differs only in banner and comment text.
 - `scripts/sorcc-target-finalize.sh` was edited 2026-09-01 to require the
   `qwen3/4b-instruct` manifest instead of `llama3.2/3b`. **This edit has not run on
-  hardware.** Recompute its hash and re-verify on a bench unit before the next fleet
-  deployment.
+  hardware.** Recompute its hash and re-verify on a bench unit before the next build.
 
 Run `bash -n` after every shell-script edit and recompute the hash before deployment.
