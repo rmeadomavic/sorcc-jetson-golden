@@ -3,7 +3,7 @@
 Everything in this directory already ran. It is kept as a worked example and audit
 record, not as a tool to re-run. The cleanup and scrub scripts are host-locked by
 hostname check and magic argument, and they assert against the exact 2026-07-22 fleet
-state. Their SHA-256 hashes are pinned in `../../docs/provisioning-runbook.md`.
+state. Their SHA-256 hashes are pinned in `../payload-method/provisioning-runbook.md`.
 
 | Script | What it did |
 |---|---|

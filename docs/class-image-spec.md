@@ -1,8 +1,8 @@
 # Jetson Class Image and Hydra Scope
 
 The build and scope specification for the AI-module Jetson kits. Defines exactly what
-Hydra surface students touch and what stays dark. The executable process is
-`provisioning-runbook.md`.
+Hydra surface students touch and what stays dark. The executable process is `install.sh`
+(see the [README](../README.md)).
 
 > **The essence.** Hydra's job in the AI module is a live edge detector running offline
 > on the platform, whose output students must interpret and distrust correctly, feeding
@@ -11,13 +11,13 @@ Hydra surface students touch and what stays dark. The executable process is
 
 ## Locked student-facing Hydra surface
 
-The class standard is **OBSERVE mode: the payload watches and reports, it does not act.**
+The class standard is **OBSERVE mode: Hydra watches and reports, it does not act.**
 Ethos: verify, override, document. A high score is a cue to verify, not proof.
 
 | Tier | What | Rationale |
 |------|------|-----------|
 | **Front-facing** (students run it) | YOLO detection + stable-ID tracking, dashboard at `:8080`, OBSERVE mode, MAVLink STATUSTEXT alerts to the FC | The only stack marked stable; matches the hands-on AI deck scope |
-| **In image, dark** (config off; instructor may flip) | TAK/CoT out, `autonomous.enabled: false`, `rf_homing.enabled: false`, `drop.servo_channel: 0`, `servo_tracking.enabled: false`, `tak.listen_commands: false` | Student kits have no Alfa/RTL-SDR/FC-actuator wiring, so these show in Capability Status as hardware-blocked with honest reasons rather than being hidden |
+| **In image, dark** (config off; instructor may flip) | TAK/CoT out (`tak.enabled: false`), `autonomous.enabled: false`, `rf_homing.enabled: false`, `drop.servo_channel: 0`, `servo_tracking.enabled: false`, `tak.listen_commands: false` | Student kits have no Alfa/RTL-SDR/FC-actuator wiring, so these show in Capability Status as hardware-blocked with honest reasons rather than being hidden |
 | **Never surfaces** | Follow/Strike/radial menu, HDZero OSD overlay, OTA, phone-home, OpenMANET, Hydra Lite | All carry explicit untested/gated/in-design language upstream. Untested promises do not ship to students |
 
 > **Why this is not a fork or a feature-strip.** One codebase, one class config profile.
@@ -36,11 +36,11 @@ demo code, and blur the module boundary students are being taught.
 
 | Layer | Locked value |
 |-------|--------------|
-| Base | JetPack 6.2.2, L4T R36.4.7, both QSPI slots at 36.4.7, MAXN_SUPER; preserve each unit's existing Linux account |
+| Base | JetPack 6.2.x (Jetson Linux R36.4 or R36.5, Ubuntu 22.04), NVMe or microSD, MAXN_SUPER; each unit keeps its own Linux account. **Not JetPack 7**: its CUDA 13 driver cannot run the kit's CUDA 12.6 containers (error 801) |
 | Power | 4S vbat direct to Orin Nano DC input (9-20 V window); motors on a separate rail |
-| LLM | `qwen3:4b-instruct` (swapped from `llama3.2:3b` on 2026-08-03; Meta AUP prohibits military use; never the plain `qwen3:4b` thinking alias) with the local streaming training UI: visible execution stages, token and timing metrics, session context, and a conditional reasoning panel |
-| Imagery | Image `sha256:4e95d450bc7cee956786442302f632800515cd00d37bd1952d8c2ece3f085c5c`: PyTorch 2.7 + ComfyUI v0.19.3, `--lowvram --cpu-vae`, auto-loaded 256px START HERE workflow, quality workflow, SD 1.5 + DreamShaper 8 + RevAnimated + 5 LoRAs including LCM |
-| Detector | Hydra digest `sha256:8b820cbe5edbb033c2633de67b43f6c1ad576785a27a05b4b4221b059451855d` |
+| LLM | Ollama 0.34.4, CPU only, 4K context, `qwen3:4b-instruct` (swapped from `llama3.2:3b` on 2026-08-03; Meta AUP prohibits military use; never the plain `qwen3:4b` thinking alias) with the local streaming training UI: visible execution stages, token and timing metrics, session context, and a conditional reasoning panel |
+| Imagery | `comfyui-sorcc:latest`, built on each kit from `comfyui/Dockerfile`: `dustynv/pytorch:2.7-r36.4.0` (PyTorch 2.7, CUDA 12.6) + ComfyUI v0.19.3 + `comfyui/requirements.lock`; run with `--lowvram --cpu-vae --disable-dynamic-vram`; auto-loaded 256px START HERE workflow, quality workflow, cheat sheet; SD 1.5 + DreamShaper 8 + RevAnimated 1.2.2 + 5 LoRAs including LCM (`comfyui/models.txt`) |
+| Detector | Hydra digest `sha256:8b820cbe5edbb033c2633de67b43f6c1ad576785a27a05b4b4221b059451855d` (built from Hydra commit `405eaf8`), YOLOv8n weights, class config `hydra/config.ini` |
 | RAM discipline | 8 GB kit: ONE heavy tool at a time. Stop the ComfyUI container before Ollama or the runner crashes (verified on bench) |
 
 ## The truck (SCX6): two honest tiers
@@ -55,35 +55,31 @@ demo code, and blur the module boundary students are being taught.
   companion link (proven 2026-06-01). Stop there. No GUIDED-from-detections in front of
   students; Follow/Strike are hardware-test-gated.
 
-## Build method: locked payload, per-device finalization
+## Build method: per-kit install from pinned sources
 
-The original clone-first plan was not used. Each unit boots from its own microSD card
-with its own hostname and Linux account. One verified unit serves as the payload source;
-targets are provisioned in place so machine IDs, SSH host keys, accounts, and network
-profiles stay unique.
+The original clone-first plan was not used, and the 2026-07 copy-from-a-finished-kit method
+is retired (see `archive/`). Each kit now builds itself with `install.sh`, so it keeps its own
+hostname, Linux account, machine ID, SSH host keys, and network profile.
 
 The repeatable sequence:
 
-1. Verify the target identity, root filesystem, storage health, and absence of personal
-   credentials.
-2. Upgrade L4T to 36.4.7 and update both QSPI slots on that physical Jetson. QSPI is not
-   carried by a disk image.
-3. Install and prove Chromium before finalization.
-4. Transfer the locked application payload and both exact container images directly over
-   the local network.
-5. Run `sorcc-target-finalize.sh` with the target's existing Linux user and its `HYDRA-N`
-   callsign. The script creates a unique token and installs the service, browser,
-   launcher, wallpaper, and memory-policy state.
-6. Run the full smoke script with the USB camera attached, then test the actual desktop
-   shortcut and browser session.
-7. Remove staging, transfer credentials, temporary registry data, test images, and
-   personal state without removing the locked payload.
+1. Confirm JetPack 6.2.x; reflash from JetPack 7 if needed (`docs/reflash-jetpack6-nvme.md`).
+2. Run `sudo ./install.sh HYDRA-N` with the kit's callsign. It installs Docker and the NVIDIA
+   runtime, Chromium, Super mode, Ollama and the model, the pinned Hydra image, the ComfyUI
+   image, and the checked models; creates a unique Hydra token; and installs the services,
+   one-tool policy, launcher, wallpaper, and desktop shortcut.
+3. Reboot, then run the smoke test with the USB camera attached.
+4. Check the actual desktop shortcut and browser session (`docs/acceptance-checklist.md`).
 
 ## Reproducibility pin
 
-The Hydra container digest is the authoritative application pin; no git tag
-exists for it. The local ComfyUI image ID and the three workflow files in
-`../scripts/workflows/` complete the pin set.
+Everything a kit runs is pinned in this repo:
+
+- Hydra: container digest above (no git tag exists for it)
+- ComfyUI: base image digest and ComfyUI commit in `comfyui/Dockerfile`, Python packages in
+  `comfyui/requirements.lock`, model files by SHA-256 in `comfyui/models.txt`, and the three
+  workflows in `comfyui/workflows/`
+- Language: `OLLAMA_VERSION` and `LLM_MODEL` at the top of `install.sh`
 
 Units built to this spec are issued to students and leave with them at the end of the
-course. Any MMC or cache-flush error on a unit is a microSD replacement trigger.
+course. Any MMC or cache-flush error on a microSD unit is a card replacement trigger.

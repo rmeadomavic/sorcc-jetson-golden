@@ -8,7 +8,7 @@ Ollama so the LLM needs no terminal. Pure Python stdlib — no venv, no deps.
 
 Service control via `sudo systemctl` (NOPASSWD sudoers rule installs the three
 unit names). Status via sysfs (no sudo)."""
-import json, subprocess, urllib.request, socket, time
+import json, subprocess, urllib.error, urllib.request, socket, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -25,6 +25,9 @@ TOOL_DESC = {
               "The class configuration observes and reports. It does not act.",
 }
 OLLAMA = "http://127.0.0.1:11434"
+HEALTH_URL = {"chat": OLLAMA + "/api/version",
+              "image": "http://127.0.0.1:8188/system_stats",
+              "detect": "http://127.0.0.1:8080/api/health"}
 MODEL = "qwen3:4b-instruct"  # swapped from llama3.2:3b 2026-08-03 (license); never the plain qwen3:4b thinking alias
 OLLAMA_CONTEXT = 4096
 
@@ -82,6 +85,17 @@ def status():
     return {"active": active, "ram_used_mb": ram_used, "ram_total_mb": ram_tot,
             "temp_c": temp, "gpu_pct": gpu,
             "services": {t: svc_active(u) for t, u in UNITS.items()}}
+
+
+def tool_ready(tool):
+    """True once the tool's own web server answers (any HTTP status counts as up)."""
+    try:
+        with urllib.request.urlopen(HEALTH_URL[tool], timeout=2):
+            return True
+    except urllib.error.HTTPError:
+        return True
+    except Exception:
+        return False
 
 
 def start_tool(tool):
@@ -213,10 +227,16 @@ async function refresh(){{
 async function go(t){{
  let btn=document.getElementById('btn_'+t);btn.disabled=true;btn.textContent='Starting...';
  let r=await (await fetch('/start?tool='+t,{{method:'POST'}})).json();
- if(t==='chat'){{location.href='/chat';return}}
- // poll the tool's port then redirect
- btn.textContent='Opening...';
- setTimeout(()=>{{location.href=r.url}}, t==='image'?9000:7000);
+ let target=t==='chat'?'/chat':r.url, t0=Date.now();
+ // wait until the tool answers, then open it (cold starts can take a minute or more)
+ while(Date.now()-t0<300000){{
+  let s={{}};try{{s=await (await fetch('/ready?tool='+t)).json()}}catch(e){{}}
+  if(s.ready){{location.href=target;return}}
+  if(s.running===false&&Date.now()-t0>20000){{btn.textContent='Did not start. Try again';btn.disabled=false;return}}
+  btn.textContent='Starting... '+Math.round((Date.now()-t0)/1000)+' s';
+  await new Promise(ok=>setTimeout(ok,2000));
+ }}
+ location.href=target;
 }}
 async function stopAll(){{
  let btn=document.getElementById('stopall');btn.dataset.busy='1';btn.disabled=true;btn.textContent='Stopping...';
@@ -382,6 +402,13 @@ class H(BaseHTTPRequestHandler):
             self._send(200, CHAT)
         elif p == "/status":
             self._send(200, json.dumps(status()), "application/json")
+        elif p == "/ready":
+            tool = parse_qs(urlparse(self.path).query).get("tool", [""])[0]
+            if tool in UNITS:
+                body = {"ready": tool_ready(tool), "running": svc_active(UNITS[tool])}
+                self._send(200, json.dumps(body), "application/json")
+            else:
+                self._send(400, json.dumps({"ready": False}), "application/json")
         elif p == "/api/model":
             try:
                 self._send(200, json.dumps(ollama_meta()), "application/json")

@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-"""Apply the reviewed student-facing copy to the three shipped ComfyUI workflows."""
+"""Apply the reviewed student-facing copy to the three shipped ComfyUI workflows.
+
+Edit the text below, then run: python3 scripts/refresh_workflow_copy.py
+It rewrites comfyui/workflows/*.json in place.
+"""
 import json
 import pathlib
 
 
-ROOT = pathlib.Path(__file__).with_name("workflows")
+ROOT = pathlib.Path(__file__).resolve().parent.parent / "comfyui" / "workflows"
 
 
 COPY = {
@@ -14,7 +18,7 @@ COPY = {
 This workflow is preset for the class Jetson.
 
 1. Edit the **Positive prompt** node.
-2. Select **Queue** at the top of the page.
+2. Select **Run** at the top right of the page.
 3. Wait for the image in the **GENERATED output** node.
 
 The file is also saved in the output folder. Any image that leaves this kit must be marked **GENERATED**.""",
@@ -44,7 +48,7 @@ Keep the resolution at 256 by 256 on this 8 GB kit. If memory becomes fragmented
 This workflow uses the reliable 20-step preset.
 
 1. Edit the **Positive prompt** node.
-2. Select **Queue** at the top of the page.
+2. Select **Run** at the top right of the page.
 3. Wait for the image in the **GENERATED output** node.
 
 The file is also saved in the output folder. Any image that leaves this kit must be marked **GENERATED**.""",
@@ -75,7 +79,7 @@ This pre-wired SD 1.5 workflow is sized for the 8 GB class Jetson.
 
 ## Quick start
 1. Edit the **Positive prompt** node below the checkpoint
-2. Select **Queue**
+2. Select **Run** (top right)
 3. Find the image at the bottom right and in `/opt/sorcc/comfyui/output/`
 
 ## Change the base model
