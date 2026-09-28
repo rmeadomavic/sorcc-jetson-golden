@@ -14,7 +14,7 @@ sudo /opt/sorcc/sorcc-jetson-smoke-test.sh
 Pass: `PASS 24  WARN 1  FAIL 0`, or `PASS 25` with a person in front of the camera. The test
 drives the kit the way a student does and checks real outputs, not just the absence of errors:
 
-- JetPack 6, MAXN power mode, camera, model files, desktop shortcut
+- JetPack version (7.2+ native build or 6.2.x Docker build), MAXN power mode, camera, model files, desktop shortcut
 - Hydra's switched-off features are still off
 - Detection: live camera frame, detector running, FPS reported
 - Language: a real streamed answer with token and timing metrics
@@ -63,9 +63,9 @@ ls -la ~/.ssh 2>/dev/null
 
 | Gate | Required result |
 |---|---|
-| Firmware | JetPack 6.2.x (`# R36` in `/etc/nv_tegra_release`); no pending reboot notice |
-| Power | MAXN_SUPER; GPU maximum 1020 MHz (`cat /sys/devices/platform/17000000.gpu/devfreq/17000000.gpu/max_freq` shows `1020000000`) |
-| Services | launcher and Docker running; `systemctl --failed` empty; the three tools start only on demand |
+| Firmware | JetPack 7.2+ (native build) or 6.2.x (Docker build), the same on every kit in the class; no pending reboot notice |
+| Power | MAXN_SUPER; GPU maximum 1020 MHz (`cat /sys/devices/platform/*gpu*/devfreq/*/max_freq` shows `1020000000`) |
+| Services | launcher running (and Docker, on JetPack 6); `systemctl --failed` empty; the three tools start only on demand |
 | Privacy | section 3 clean |
 | Identity | unique host, account, callsign, and Hydra token |
 | Browser | the desktop shortcut opens a clean local Chromium |

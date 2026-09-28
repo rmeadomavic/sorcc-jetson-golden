@@ -62,12 +62,15 @@ PY
 echo "SORCC Jetson acceptance: $(hostname)"
 
 hdr "1. Base platform"
-L4T="$(head -1 /etc/nv_tegra_release 2>/dev/null | tr -s ' ')"
-if [[ "$L4T" == "# R36 "* ]]; then
-  ok "JetPack 6: $L4T"
-else
-  bad "not JetPack 6 (need L4T R36): ${L4T:-missing /etc/nv_tegra_release}"
-fi
+L4T="$(dpkg-query -W -f '${Version}' nvidia-l4t-core 2>/dev/null | cut -d- -f1)"
+[[ -n "$L4T" ]] || L4T="$(sed -nE '1s/^# R([0-9]+) .*REVISION: ([0-9.]+).*/\1.\2/p' /etc/nv_tegra_release 2>/dev/null)"
+UBUNTU="$(. /etc/os-release 2>/dev/null; echo "${VERSION_ID:-}")"
+case "${L4T%%.*}" in
+  36) ok "JetPack 6 (Jetson Linux $L4T, Docker build)" ;;
+  3[89]|4[0-9]) ok "JetPack 7 (Jetson Linux $L4T, native build)" ;;
+  *) if [[ "$UBUNTU" == 24.04 ]]; then ok "JetPack 7 (Ubuntu 24.04, native build)"
+     else bad "unsupported Jetson Linux version: ${L4T:-unknown}"; fi ;;
+esac
 MODE="$(nvpmodel -q 2>/dev/null | grep -i 'Power Mode' | head -1)"
 echo "$MODE" | grep -qi MAXN && ok "power mode: $MODE" || bad "power mode is not MAXN: $MODE"
 [[ -c /dev/video0 ]] && ok "USB camera node /dev/video0 present" || bad "USB camera node /dev/video0 missing"

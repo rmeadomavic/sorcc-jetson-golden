@@ -10,5 +10,5 @@ replaced all of it. Nothing here is needed to build a kit.
 | `history/` | One-shot cleanup and scrub scripts from the 2026-07 build, and the JetPack 7 prototype scripts. | Already ran. Host-locked to the original units. |
 
 The JetPack 7 prototype in `history/jp7-prototype/` is where the "JetPack 7 containers cannot
-reach the GPU (CUDA error 801)" finding came from. That finding is why the kit requires
-JetPack 6.
+reach the GPU (CUDA error 801)" finding came from. The kit now runs natively on JetPack 7
+without containers (`docs/jetpack7.md`) and keeps the JetPack 6 Docker build as the backup.

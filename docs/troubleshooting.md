@@ -13,9 +13,24 @@ models already checked are not fetched again. The full log is `/var/log/sorcc-in
 
 Network errors (timeouts, "connection reset") usually pass on a second run.
 
-## "JetPack 7 is installed"
+## The JetPack 7 test says "use the JetPack 6 backup"
 
-Reflash with JetPack 6.2.x: [reflash-jetpack6-nvme.md](reflash-jetpack6-nvme.md).
+Look at which line failed in the result table (the full output is in
+`/var/log/sorcc-jetpack7-test.log`):
+
+- **gpu FAIL** or **imagery FAIL: the image came out blank**: the GPU gives wrong results on
+  this JetPack 7 install. Reflash with JetPack 6.2.x: [reflash-jetpack6-nvme.md](reflash-jetpack6-nvme.md).
+- **imagery FAIL: ComfyUI did not start**: read the end of
+  `/opt/sorcc/jetpack7-test-comfyui.log`. Out-of-memory or a missing package is worth one
+  re-run of the test after a reboot. If it fails again, use JetPack 6.
+- A **download** or **network** error stops the test before the table. Re-run it; finished
+  downloads are reused.
+
+## "The GPU check failed on JetPack 7"
+
+The installer stops here when PyTorch cannot see the GPU or computes wrong results. First
+reboot and run the installer again. If it still fails, run `sudo ./scripts/jetpack7-test.sh`
+for a fuller report, and plan on the JetPack 6 backup.
 
 ## "Not enough free disk space"
 
@@ -27,7 +42,7 @@ what is using space: `sudo du -xh --max-depth=2 / | sort -h | tail -20`.
 The installer deleted the bad file. Run it again. If the same file fails twice, the file on
 Hugging Face has changed; report it so `comfyui/models.txt` can be updated.
 
-## "A test container could not use the GPU"
+## "A test container could not use the GPU" (JetPack 6)
 
 Docker is installed, but containers cannot reach the GPU. In order:
 
@@ -58,8 +73,9 @@ Then run the installer again.
 
 ## "MAXN_SUPER is not available"
 
-The board was flashed without the Super configuration, so the GPU runs slower. Everything
-still works. To fix it, reflash with JetPack 6.2.x using SDK Manager or the
+The board was installed without the Super configuration, so the GPU runs slower. Everything
+still works. On JetPack 7, see "Super mode" in [jetpack7.md](jetpack7.md) (the JetPack 7.2 USB
+installer causes this). On JetPack 6, reflash using SDK Manager or the
 `jetson-orin-nano-devkit-super` command in [reflash-jetpack6-nvme.md](reflash-jetpack6-nvme.md).
 
 ## An NVIDIA "reboot required" notice keeps coming back
@@ -108,7 +124,7 @@ other tools. Expect a few words per second. The first answer after launch also l
 
 | Section | What to check |
 |---|---|
-| 1. Base platform | JetPack 6, `sudo nvpmodel -q` shows MAXN, camera plugged in, installer finished |
+| 1. Base platform | JetPack 7 or 6.2.x, `sudo nvpmodel -q` shows MAXN, camera plugged in, installer finished |
 | 2. Hydra dark surface | Someone edited `/opt/sorcc/hydra/config.ini`; run the installer again to restore it |
 | 3. Detection | Camera plugged in; `journalctl -u hydra-detect` |
 | 4. Language | `journalctl -u ollama`; `ollama list` must show `qwen3:4b-instruct` |
@@ -119,7 +135,7 @@ other tools. Expect a few words per second. The first answer after launch also l
 
 | To do this | Run |
 |---|---|
-| Rebuild the ComfyUI image | `sudo ./install.sh --rebuild HYDRA-N` |
+| Rebuild the ComfyUI image (JetPack 6) or the Python environment (JetPack 7) | `sudo ./install.sh --rebuild HYDRA-N` |
 | Change the kit's callsign | `sudo ./install.sh HYDRA-N` with the new callsign |
 | Make a new Hydra token | `sudo rm /opt/sorcc/hydra/config.ini`, then run the installer |
 | Restore the class Hydra config | Run the installer (it rewrites the config and keeps the token) |

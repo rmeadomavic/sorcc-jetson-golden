@@ -1,12 +1,17 @@
 #!/usr/bin/env bash
-# SORCC AI Kit installer for a Jetson Orin Nano Super (8 GB) running JetPack 6.
+# SORCC AI Kit installer for a Jetson Orin Nano Super (8 GB) running JetPack 7 or 6.
 #
 # Builds the whole kit from the internet on this Jetson. No second Jetson and no
 # copied files are needed:
 #   Language   Ollama with qwen3:4b-instruct
-#   Imagery    ComfyUI (Docker image built here) with the class models and workflows
-#   Detection  Hydra (Docker image pulled from GitHub) with YOLOv8n and the class config
+#   Imagery    ComfyUI with the class models and workflows
+#   Detection  Hydra with YOLOv8n and the class config
 #   Launcher   the SORCC AI Kit web page on port 8090 and the desktop shortcut
+#
+# It picks the build from the JetPack version it finds:
+#   JetPack 7  ComfyUI and Hydra run natively from one pinned Python environment
+#              (jetpack7/requirements.lock). Run scripts/jetpack7-test.sh first.
+#   JetPack 6  ComfyUI and Hydra run in Docker (comfyui/Dockerfile, pinned Hydra image).
 #
 # Usage, from this repo's folder on the Jetson:
 #   sudo ./install.sh HYDRA-1
@@ -16,7 +21,7 @@
 #
 # Options:
 #   --user NAME   desktop account that gets the shortcut (default: the account that ran sudo)
-#   --rebuild     rebuild the ComfyUI image even if it is already up to date
+#   --rebuild     rebuild the ComfyUI image (JetPack 6) or the Python environment (JetPack 7)
 set -Eeuo pipefail
 
 # ---------------------------------------------------------------------------
@@ -34,10 +39,8 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SORCC=/opt/sorcc
 LOG=/var/log/sorcc-install.log
 TOTAL_STEPS=9
-STEP=0
-STEP_NAME="starting"
-WARNINGS=()
 REBOOT_NEEDED=0
+PLATFORM=""   # jp6 or jp7, set by the first step
 
 usage() {
   cat <<EOF
@@ -48,66 +51,13 @@ Usage: sudo ./install.sh [--user NAME] [--rebuild] CALLSIGN
 EOF
 }
 
-# ---------------------------------------------------------------------------
-# Output helpers
-# ---------------------------------------------------------------------------
-if [[ -t 1 ]]; then G=$'\e[1;32m' Y=$'\e[1;33m' R=$'\e[1;31m' N=$'\e[0m'; else G='' Y='' R='' N=''; fi
-step() { STEP=$((STEP + 1)); STEP_NAME="$*"; printf '\n%s==> [%d/%d] %s%s\n' "$G" "$STEP" "$TOTAL_STEPS" "$*" "$N"; }
-info() { printf '    %s\n' "$*"; }
-warn() { printf '%s    WARNING: %s%s\n' "$Y" "$*" "$N"; WARNINGS+=("$*"); }
-die() {
-  printf '\n%sSTOPPED during step %d (%s):%s\n' "$R" "$STEP" "$STEP_NAME" "$N" >&2
-  printf '  %s\n' "$@" >&2
-  printf '\nFix the problem above, then run the same command again. Finished steps are skipped.\n' >&2
-  printf 'Full log: %s\n' "$LOG" >&2
-  exit 1
-}
+# shellcheck source=scripts/sorcc-lib.sh
+. "$REPO/scripts/sorcc-lib.sh"
 on_error() {
   die "This command failed (install.sh line $1):" "  $2" \
     "Look at the lines just above for the reason. Network errors usually pass on a re-run."
 }
 trap 'on_error "$LINENO" "$BASH_COMMAND"' ERR
-
-retry() {
-  local attempt=1
-  until "$@"; do
-    if (( attempt >= 4 )); then return 1; fi
-    printf '%s    attempt %d failed, retrying in %ds: %s%s\n' "$Y" "$attempt" $((attempt * 15)) "$*" "$N"
-    sleep $((attempt * 15))
-    attempt=$((attempt + 1))
-  done
-}
-
-# Download URL to DEST and verify its size and SHA-256. Resumes partial downloads.
-# A verified file is recorded under $SORCC/.verified so re-runs skip re-hashing it.
-fetch() {
-  local url="$1" dest="$2" size="$3" sha="$4" part="$2.part" have
-  local mark="$SORCC/.verified/${dest##*/}.sha256"
-  if [[ -f "$dest" && "$(stat -c %s "$dest")" == "$size" && "$(cat "$mark" 2>/dev/null || true)" == "$sha" ]]; then
-    info "already have $(basename "$dest")"
-    return 0
-  fi
-  install -d "$(dirname "$dest")"
-  if [[ -f "$dest" && "$(stat -c %s "$dest")" == "$size" ]]; then
-    mv -f "$dest" "$part"   # right size but not verified yet: check it instead of downloading again
-  fi
-  have="$(stat -c %s "$part" 2>/dev/null || echo 0)"
-  if (( have > size )); then rm -f "$part"; have=0; fi
-  if (( have < size )); then
-    info "downloading $(basename "$dest") ($((size / 1000000)) MB)"
-    retry curl -fL --retry 5 --retry-delay 10 --connect-timeout 30 -C - --progress-bar -o "$part" "$url" \
-      || die "Download failed: $url" "Check the internet connection, then re-run. The download resumes where it stopped."
-  fi
-  info "checking $(basename "$dest")"
-  if [[ "$(stat -c %s "$part")" != "$size" ]] || [[ "$(sha256sum "$part" | cut -d' ' -f1)" != "$sha" ]]; then
-    rm -f "$part"
-    die "Downloaded file is damaged or has changed upstream: $(basename "$dest")" \
-      "Source: $url" "The partial file was deleted. Re-run to download it again."
-  fi
-  mv -f "$part" "$dest"
-  install -d "$SORCC/.verified"
-  printf '%s\n' "$sha" >"$mark"
-}
 
 # ---------------------------------------------------------------------------
 # Arguments
@@ -162,22 +112,19 @@ if [[ "$MODEL" != *Jetson* && "$MODEL" != *Orin* ]]; then
   die "This does not look like a Jetson (board: $MODEL)."
 fi
 if [[ "${L4T_MAJOR:-0}" -ge 38 || "${VERSION_ID:-}" == 24.04 ]]; then
-  die "JetPack 7 is installed (Ubuntu ${VERSION_ID:-?}, L4T ${L4T_VERSION:-?}). This kit needs JetPack 6." \
-    "" \
-    "JetPack 7 is NVIDIA's newest release, but the kit's Docker images are built for JetPack 6." \
-    "On JetPack 7 they cannot use the GPU (CUDA error 801), and ComfyUI produces blank images." \
-    "" \
-    "Fix: reflash this Jetson with JetPack 6.2.x onto the NVMe drive, then run this again." \
-    "Step-by-step: docs/reflash-jetpack6-nvme.md in this repo."
-fi
-if [[ "${L4T_MAJOR:-0}" != 36 ]]; then
+  PLATFORM=jp7
+  info "JetPack 7: ComfyUI and Hydra will run natively (no Docker)"
+elif [[ "${L4T_MAJOR:-0}" == 36 ]]; then
+  # JetPack 6.2 (36.4.3) is the first release with Super mode; 6.0 and 6.1 are 36.3 and 36.4.0.
+  if [[ "$(printf '%s\n' 36.4.3 "$L4T_VERSION" | sort -V | sed -n 1p)" != 36.4.3 ]]; then
+    die "Jetson Linux $L4T_VERSION is too old (JetPack 6.0 or 6.1)." \
+      "Use JetPack 7.2 or newer, or JetPack 6.2.x (36.4.3 or newer). See docs/jetpack7.md."
+  fi
+  PLATFORM=jp6
+  info "JetPack 6: ComfyUI and Hydra will run in Docker"
+else
   die "Unsupported Jetson Linux version: ${L4T_VERSION:-unknown}." \
-    "This kit needs JetPack 6.2.x (Jetson Linux 36.4.3 or newer). See docs/reflash-jetpack6-nvme.md."
-fi
-# JetPack 6.2 (36.4.3) is the first release with Super mode; 6.0 and 6.1 are 36.3 and 36.4.0.
-if [[ "$(printf '%s\n' 36.4.3 "$L4T_VERSION" | sort -V | sed -n 1p)" != 36.4.3 ]]; then
-  die "Jetson Linux $L4T_VERSION is too old (JetPack 6.0 or 6.1). This kit needs JetPack 6.2.x (36.4.3 or newer)." \
-    "See docs/reflash-jetpack6-nvme.md."
+    "Use JetPack 7.2 or newer, or JetPack 6.2.x (36.4.3 or newer). See docs/jetpack7.md."
 fi
 [[ "$MODEL" == *"Orin Nano"* ]] || warn "Built and tested on the Orin Nano Super dev kit; this board is '$MODEL'."
 MEM_GB=$(( $(awk '/^MemTotal:/ {print $2}' /proc/meminfo) / 1000000 ))
@@ -189,7 +136,9 @@ info "Root filesystem: $ROOT_DEV"
 
 # Rough space check: only count what is not installed yet.
 need_gb=5
-if command -v docker >/dev/null 2>&1; then
+if [[ "$PLATFORM" == jp7 ]]; then
+  [[ -f "$SORCC/venv/.sorcc-lock" ]] || need_gb=$((need_gb + 10))
+elif command -v docker >/dev/null 2>&1; then
   docker image inspect "$HYDRA_IMAGE" >/dev/null 2>&1 || need_gb=$((need_gb + 16))
   docker image inspect "$COMFY_IMAGE" >/dev/null 2>&1 || need_gb=$((need_gb + 16))
 else
@@ -202,7 +151,12 @@ info "Free space: ${FREE_GB} GB (this run needs about ${need_gb} GB)"
 (( FREE_GB >= need_gb )) || die "Not enough free disk space: ${FREE_GB} GB free, about ${need_gb} GB needed." \
   "Use a 256 GB or larger NVMe drive, or free up space, then re-run."
 
-for url in https://ollama.com https://huggingface.co https://ghcr.io/v2/ https://registry-1.docker.io/v2/ https://github.com; do
+if [[ "$PLATFORM" == jp7 ]]; then
+  urls="https://ollama.com https://huggingface.co https://github.com https://pypi.org https://download.pytorch.org"
+else
+  urls="https://ollama.com https://huggingface.co https://github.com https://ghcr.io/v2/ https://registry-1.docker.io/v2/"
+fi
+for url in $urls; do
   code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "$url" 2>/dev/null || true)"
   [[ "$code" != 000 && -n "$code" ]] || die "Cannot reach $url" \
     "The installer needs internet access. Plug the Jetson into a network with internet and re-run."
@@ -210,17 +164,20 @@ done
 info "Internet access OK"
 
 # ---------------------------------------------------------------------------
-step "Installing system packages, Docker, and the NVIDIA container runtime"
+if [[ "$PLATFORM" == jp7 ]]; then step "Installing system packages"; else step "Installing system packages, Docker, and the NVIDIA container runtime"; fi
 # ---------------------------------------------------------------------------
 export DEBIAN_FRONTEND=noninteractive
 systemctl stop ollama comfyui hydra-detect >/dev/null 2>&1 || true   # free memory on a re-run
 retry apt-get update || die "apt-get update failed. Check the internet connection and the apt sources."
 retry apt-get install -y --no-install-recommends \
-  ca-certificates curl git openssl python3 rsync v4l-utils zstd dbus libglib2.0-bin
-if ! command -v docker >/dev/null 2>&1; then
+  ca-certificates curl git openssl python3 python3-venv rsync v4l-utils zstd dbus libglib2.0-bin
+if [[ "$PLATFORM" == jp7 ]]; then
+  info "$(python3 --version) with venv"
+elif ! command -v docker >/dev/null 2>&1; then
   info "Docker is not installed; installing docker.io"
   retry apt-get install -y docker.io
 fi
+if [[ "$PLATFORM" == jp6 ]]; then
 systemctl enable --now docker >/dev/null
 runtimes="$(docker info --format '{{json .Runtimes}}' 2>/dev/null || true)"
 if [[ "$runtimes" != *nvidia* ]]; then
@@ -237,6 +194,7 @@ fi
 [[ "$runtimes" == *nvidia* ]] || die "Docker still has no 'nvidia' runtime." \
   "Try: sudo apt-get install --reinstall nvidia-container-toolkit && sudo systemctl restart docker"
 info "Docker $(docker version --format '{{.Server.Version}}') with the NVIDIA runtime"
+fi
 
 # ---------------------------------------------------------------------------
 step "Installing the Chromium browser"
@@ -259,7 +217,11 @@ step "Setting Super power mode (MAXN_SUPER)"
 SUPER_ID="$(sed -nE 's/^<[[:space:]]*POWER_MODEL[[:space:]]+ID=([0-9]+)[[:space:]]+NAME=MAXN_SUPER[[:space:]]*>.*/\1/p' /etc/nvpmodel.conf 2>/dev/null | sed -n 1p || true)"
 CURRENT_MODE="$(nvpmodel -q 2>/dev/null | sed -nE 's/.*Power Mode:[[:space:]]*//p' | sed -n 1p || true)"
 if [[ -z "$SUPER_ID" ]]; then
-  warn "MAXN_SUPER is not available, so the GPU stays slower. The board was flashed without the Super configuration; see docs/reflash-jetpack6-nvme.md."
+  if [[ "$PLATFORM" == jp7 ]]; then
+    warn "MAXN_SUPER is not available, so the GPU is capped (about 624 MHz instead of 1020). The JetPack 7.2 USB installer leaves Super mode off; see 'Super mode' in docs/jetpack7.md."
+  else
+    warn "MAXN_SUPER is not available, so the GPU stays slower. The board was flashed without the Super configuration; see docs/reflash-jetpack6-nvme.md."
+  fi
 elif [[ "$CURRENT_MODE" == MAXN_SUPER ]]; then
   info "Already in MAXN_SUPER"
 else
@@ -317,8 +279,20 @@ systemctl stop ollama
 systemctl disable ollama >/dev/null 2>&1 || true
 
 # ---------------------------------------------------------------------------
-step "Detection: Hydra image, YOLO weights, and class config"
+step "Detection: Hydra, YOLO weights, and class config"
 # ---------------------------------------------------------------------------
+if [[ "$PLATFORM" == jp7 ]]; then
+  jp7_app_source hydra rmeadomavic/Hydra "$HYDRA_COMMIT"
+  (( REBUILD )) && rm -f "$VENV/.sorcc-lock"
+  jp7_python_env
+  info "Checking that PyTorch can use the GPU"
+  gpu_check="$(jp7_gpu_check 2>&1)" || {
+    printf '%s\n' "$gpu_check" | tail -8
+    die "PyTorch could not use the GPU correctly." \
+      "See 'The GPU check failed on JetPack 7' in docs/troubleshooting.md."
+  }
+  info "$(printf '%s\n' "$gpu_check" | tail -1)"
+else
 if docker image inspect "$HYDRA_IMAGE" >/dev/null 2>&1; then
   info "Hydra image already downloaded"
 else
@@ -334,6 +308,7 @@ if ! gpu_check="$(docker run --rm --runtime nvidia "$HYDRA_IMAGE" python3 -c \
     "See 'A test container could not use the GPU' in docs/troubleshooting.md."
 fi
 info "$(printf '%s\n' "$gpu_check" | tail -1)"
+fi
 
 install -d -m 0755 "$SORCC" "$SORCC/hydra" "$SORCC/hydra/models"
 fetch "$YOLO_URL" "$SORCC/hydra/models/yolov8n.pt" "$YOLO_SIZE" "$YOLO_SHA256"
@@ -349,8 +324,11 @@ chown -R root:root "$SORCC/hydra"
 info "Hydra callsign $CALLSIGN"
 
 # ---------------------------------------------------------------------------
-step "Imagery: building the ComfyUI image and downloading models"
+if [[ "$PLATFORM" == jp7 ]]; then step "Imagery: ComfyUI and models"; else step "Imagery: building the ComfyUI image and downloading models"; fi
 # ---------------------------------------------------------------------------
+if [[ "$PLATFORM" == jp7 ]]; then
+  jp7_app_source comfyui comfyanonymous/ComfyUI "$COMFYUI_COMMIT"
+else
 COMFY_BUILD_ID="$(cat "$REPO/comfyui/Dockerfile" "$REPO/comfyui/requirements.lock" | sha256sum | cut -c1-16)"
 current_build="$(docker image inspect -f '{{index .Config.Labels "sorcc.build-id"}}' "$COMFY_IMAGE" 2>/dev/null || true)"
 if [[ "$current_build" == "$COMFY_BUILD_ID" && $REBUILD -eq 0 ]]; then
@@ -366,17 +344,11 @@ else
     || die "The ComfyUI image build failed. Scroll up for the first error." \
       "If it was a network error, just re-run; finished build layers are reused."
 fi
+fi
 
 C="$SORCC/comfyui"
-install -d -m 0755 "$C" "$C/models/checkpoints" "$C/models/loras" "$C/input" "$C/output" \
-  "$C/user/default/workflows" "$C/workflows" "$C/custom_nodes"
-while read -r rel size sha url; do
-  [[ -z "$rel" || "$rel" == \#* ]] && continue
-  fetch "$url" "$C/models/$rel" "$size" "$sha"
-done <"$REPO/comfyui/models.txt"
-install -m 0644 "$REPO"/comfyui/workflows/*.json "$C/workflows/"
-rsync -a --delete "$REPO/comfyui/sorcc_student/" "$C/custom_nodes/sorcc_student/"
-[[ -f "$C/user/default/comfy.settings.json" ]] || install -m 0644 "$REPO/comfyui/comfy.settings.json" "$C/user/default/comfy.settings.json"
+install_comfy_files
+fetch_comfy_models
 chown -R "$TARGET_USER:$TARGET_USER" "$C"
 
 # ---------------------------------------------------------------------------
@@ -404,6 +376,49 @@ WantedBy=multi-user.target
 EOF
 
 # Heavy tools. Each one drops caches and compacts memory first so it gets the most of 8 GB.
+if [[ "$PLATFORM" == jp7 ]]; then
+cat >/etc/systemd/system/comfyui.service <<EOF
+[Unit]
+Description=ComfyUI (SORCC AI Kit - Imagery)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=$SORCC/app/comfyui
+Environment=PYTHONUNBUFFERED=1
+ExecStartPre=/bin/sync
+ExecStartPre=/bin/sh -c 'echo 3 > /proc/sys/vm/drop_caches'
+ExecStartPre=/bin/sh -c 'echo 1 > /proc/sys/vm/compact_memory'
+ExecStart=$VENV/bin/python main.py --base-directory $C --listen 0.0.0.0 --port 8188 \\
+  --disable-all-custom-nodes --whitelist-custom-nodes sorcc_student \\
+  --cpu-vae --lowvram --disable-dynamic-vram --preview-method none
+TimeoutStopSec=15
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+cat >/etc/systemd/system/hydra-detect.service <<EOF
+[Unit]
+Description=Hydra Detect (SORCC AI Kit - Detection)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=$SORCC/app/hydra
+Environment=PYTHONUNBUFFERED=1 YOLO_OFFLINE=1
+ExecStartPre=/bin/sync
+ExecStartPre=/bin/sh -c 'echo 3 > /proc/sys/vm/drop_caches'
+ExecStartPre=/bin/sh -c 'echo 1 > /proc/sys/vm/compact_memory'
+ExecStart=$VENV/bin/python -m hydra_detect --config $SORCC/hydra/config.ini
+TimeoutStopSec=15
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
+EOF
+else
 cat >/etc/systemd/system/comfyui.service <<EOF
 [Unit]
 Description=ComfyUI (SORCC AI Kit - Imagery)
@@ -456,6 +471,7 @@ Restart=no
 [Install]
 WantedBy=multi-user.target
 EOF
+fi
 
 # The launcher (running as the desktop user) may start and stop only these three tools.
 # Validate a temp copy first: a broken file in /etc/sudoers.d would disable sudo entirely.
@@ -532,7 +548,8 @@ runuser -u "$TARGET_USER" -- env HOME="$TARGET_HOME" dbus-run-session -- bash -c
 
 systemctl daemon-reload
 systemctl restart systemd-journald
-systemctl enable --now docker sorcc-launcher >/dev/null
+[[ "$PLATFORM" == jp6 ]] && systemctl enable --now docker >/dev/null
+systemctl enable --now sorcc-launcher >/dev/null
 systemctl restart sorcc-launcher
 systemctl disable ollama comfyui hydra-detect >/dev/null 2>&1 || true
 systemctl stop ollama comfyui hydra-detect >/dev/null 2>&1 || true
@@ -547,6 +564,7 @@ info "Launcher is up at http://127.0.0.1:8090/"
 
 printf '\n%s==================== INSTALL COMPLETE ====================%s\n' "$G" "$N"
 echo "  Kit callsign:     $CALLSIGN"
+if [[ "$PLATFORM" == jp7 ]]; then echo "  Build:            JetPack 7 (native, no Docker)"; else echo "  Build:            JetPack 6 (Docker)"; fi
 echo "  Hydra token hash: $(printf %s "$HYDRA_TOKEN" | sha256sum | cut -c1-16) (the token itself stays in $SORCC/hydra/config.ini)"
 echo "  Install log:      $LOG"
 if (( ${#WARNINGS[@]} )); then

@@ -1,19 +1,17 @@
 # Reflash a Jetson with JetPack 6.2.x on NVMe
 
-Use this guide when `install.sh` stops with "JetPack 7 is installed", or when
-`head -1 /etc/nv_tegra_release` shows anything other than `# R36` with REVISION 4.3 or higher (JetPack 6.2.x).
+This is the backup path. Use it only when the JetPack 7 test (`sudo ./scripts/jetpack7-test.sh`)
+ends with **RECOMMENDATION: use the JetPack 6 backup**, or when a kit is on a JetPack version
+the installer does not support (anything other than 7.2+ or 6.2.x).
 
-## Why JetPack 6 and not JetPack 7
+## Why a kit might need JetPack 6
 
-JetPack 7.2 (Jetson Linux r39, Ubuntu 24.04, CUDA 13) came out for the Orin Nano in June 2026.
-NVIDIA's download page now lists it first, and its USB installer writes straight to NVMe, so it
-is easy to end up on it. The kit does not work on it:
+JetPack 7.2 (Jetson Linux r39, Ubuntu 24.04, CUDA 13) is what NVIDIA's download page offers
+first, and the kit now installs on it natively (see [jetpack7.md](jetpack7.md)). JetPack 6.2.x
+is the proven build from the 2026-07 class and stays as the backup for when the JetPack 7 test
+fails on the GPU math, image, or detection checks.
 
-- The Detection (Hydra) and Imagery (ComfyUI) Docker images are built for JetPack 6
-  (CUDA 12.6). On JetPack 7 they cannot use the GPU; containers fail with CUDA error 801.
-- ComfyUI on JetPack 7 renders blank images.
-- The original build team's JetPack 7 prototype hit the same problems. The GPU also topped out
-  at 624 MHz instead of Super mode's 1020 MHz. See `archive/history/`.
+Do not mix versions in one class: if the test sends you here, reflash every kit.
 
 The JetPack 7 installer also updates the board's firmware (QSPI). A plain SD card image or
 `apt` cannot go back to JetPack 6. Both methods below reflash the firmware and the NVMe
