@@ -36,7 +36,7 @@ demo code, and blur the module boundary students are being taught.
 
 | Layer | Locked value |
 |-------|--------------|
-| Base | JetPack 6.2.x (Jetson Linux R36.4 or R36.5, Ubuntu 22.04), NVMe or microSD, MAXN_SUPER; each unit keeps its own Linux account. **Not JetPack 7**: its CUDA 13 driver cannot run the kit's CUDA 12.6 containers (error 801) |
+| Base | JetPack 6.2.x (Jetson Linux 36.4.3 or newer within R36, Ubuntu 22.04), NVMe or microSD, MAXN_SUPER; each unit keeps its own Linux account. **Not JetPack 7**: its CUDA 13 driver cannot run the kit's CUDA 12.6 containers (error 801) |
 | Power | 4S vbat direct to Orin Nano DC input (9-20 V window); motors on a separate rail |
 | LLM | Ollama 0.34.4, CPU only, 4K context, `qwen3:4b-instruct` (swapped from `llama3.2:3b` on 2026-08-03; Meta AUP prohibits military use; never the plain `qwen3:4b` thinking alias) with the local streaming training UI: visible execution stages, token and timing metrics, session context, and a conditional reasoning panel |
 | Imagery | `comfyui-sorcc:latest`, built on each kit from `comfyui/Dockerfile`: `dustynv/pytorch:2.7-r36.4.0` (PyTorch 2.7, CUDA 12.6) + ComfyUI v0.19.3 + `comfyui/requirements.lock`; run with `--lowvram --cpu-vae --disable-dynamic-vram`; auto-loaded 256px START HERE workflow, quality workflow, cheat sheet; SD 1.5 + DreamShaper 8 + RevAnimated 1.2.2 + 5 LoRAs including LCM (`comfyui/models.txt`) |

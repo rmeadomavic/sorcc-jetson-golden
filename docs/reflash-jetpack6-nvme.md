@@ -1,7 +1,7 @@
 # Reflash a Jetson with JetPack 6.2.x on NVMe
 
 Use this guide when `install.sh` stops with "JetPack 7 is installed", or when
-`head -1 /etc/nv_tegra_release` shows anything other than `# R36` with REVISION 4.x or 5.x.
+`head -1 /etc/nv_tegra_release` shows anything other than `# R36` with REVISION 4.3 or higher (JetPack 6.2.x).
 
 ## Why JetPack 6 and not JetPack 7
 
