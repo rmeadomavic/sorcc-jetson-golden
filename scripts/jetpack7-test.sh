@@ -34,7 +34,14 @@ printf '===== SORCC JetPack 7 test %s (repo %s) =====\n' "$(date -Is)" \
 declare -A RESULT DETAIL
 record() { RESULT[$1]="$2"; DETAIL[$1]="$3"; info "$2: $3"; }
 COMFY_PID=""
-cleanup() { [[ -n "$COMFY_PID" ]] && kill "$COMFY_PID" 2>/dev/null || true; }
+# Stop ComfyUI and wait until it has exited, so its GPU memory is free before the next check.
+cleanup() {
+  [[ -n "$COMFY_PID" ]] || return 0
+  kill "$COMFY_PID" 2>/dev/null || true
+  for _ in $(seq 30); do kill -0 "$COMFY_PID" 2>/dev/null || break; sleep 1; done
+  kill -9 "$COMFY_PID" 2>/dev/null || true
+  wait "$COMFY_PID" 2>/dev/null || true
+}
 trap cleanup EXIT
 
 # ---------------------------------------------------------------------------
