@@ -1,0 +1,19 @@
+# ComfyUI model files. install.sh downloads each one into /opt/sorcc/comfyui/models/
+# and checks the size and SHA-256. Total download is about 10 GB.
+#
+# Columns: <path under models/>  <bytes>  <sha256>  <download URL>
+# The local file name is what the workflows and the cheat sheet expect, so it can differ
+# from the upstream file name. All sources are public Hugging Face repositories.
+
+# Checkpoints (SD 1.5 family)
+checkpoints/dreamshaper_8.safetensors                    2132625894  879db523c30d3b9017143d56705015e15a2cb5628762c11d086fed9538abd7fd  https://huggingface.co/Lykon/DreamShaper/resolve/main/DreamShaper_8_pruned.safetensors
+checkpoints/v1-5-pruned-emaonly-fp16.safetensors         2132696762  e9476a13728cd75d8279f6ec8bad753a66a1957ca375a1464dc63b37db6e3916  https://huggingface.co/Comfy-Org/stable-diffusion-v1-5-archive/resolve/main/v1-5-pruned-emaonly-fp16.safetensors
+checkpoints/revAnimated_v122.safetensors                 5505437736  4199bcdd147e11328d5f3560301d5a7ab4ac7eeefbf49dc3eb663cb3e772b9ac  https://huggingface.co/philz1337x/revanimated/resolve/main/revAnimated_v122.safetensors
+
+# LoRAs (SD 1.5). LCM powers the fast START HERE preset; the other four are the
+# style, quality, aesthetic, and concept examples from the cheat sheet.
+loras/lcm-lora-sdv1-5.safetensors                        134621556   8f90d840e075ff588a58e22c6586e2ae9a6f7922996ee6649a7f01072333afe4  https://huggingface.co/latent-consistency/lcm-lora-sdv1-5/resolve/main/pytorch_lora_weights.safetensors
+loras/PixelArtRedmond15V-PixelArt-PIXARFK.safetensors    27216848    b770d01002510180cd03b5f8c8199fdb41d924c51d4980fc86298d0e4cdf7953  https://huggingface.co/artificialguybr/pixelartredmond-1-5v-pixel-art-loras-for-sd-1-5/resolve/main/PixelArtRedmond15V-PixelArt-PIXARFK.safetensors
+loras/detail-tweaker.safetensors                         37861176    47aaaf0d2945ca937151d61304946dd229b3f072140b85484bc93e38f2a6e2f7  https://huggingface.co/OedoSoldier/detail-tweaker-lora/resolve/main/add_detail.safetensors
+loras/ghibli-style-sd15.safetensors                      37862512    68d65d611a1b7c7d0dcdb2262b23f752314f4032e77ba8772da0aeda8171d574  https://huggingface.co/artificialguybr/studioghibli-redmond-1-5v-studio-ghibli-lora-for-liberteredmond-sd-1-5/resolve/main/StudioGhibliRedmond-15V-LiberteRedmond-StdGBRedmAF-StudioGhibli.safetensors
+loras/lego-style-sd15.safetensors                        151111535   a0cca8463c645ba2662d82d48f5eacebca4653bf25ee19bbf64047f6ea550e2f  https://huggingface.co/sumvit/sd-1.5-legoStyle-LoRA/resolve/main/legody-v10.safetensors

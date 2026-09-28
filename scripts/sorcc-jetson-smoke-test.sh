@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # sorcc-jetson-smoke-test.sh - per-kit acceptance test for the SORCC AI Kit image.
 #
-# Run after flashing and first-boot identity setup, with the USB camera connected:
+# Run after install.sh and a reboot, with the USB camera connected:
 #   sudo /opt/sorcc/sorcc-jetson-smoke-test.sh
 #
 # Exercises the same launcher path students use. It enforces one heavy tool at a time,
@@ -62,10 +62,11 @@ PY
 echo "SORCC Jetson acceptance: $(hostname)"
 
 hdr "1. Base platform"
-if [[ -f /etc/nv_tegra_release ]]; then
-  ok "$(head -1 /etc/nv_tegra_release | tr -s ' ')"
+L4T="$(head -1 /etc/nv_tegra_release 2>/dev/null | tr -s ' ')"
+if [[ "$L4T" == "# R36 "* ]]; then
+  ok "JetPack 6: $L4T"
 else
-  bad "missing /etc/nv_tegra_release"
+  bad "not JetPack 6 (need L4T R36): ${L4T:-missing /etc/nv_tegra_release}"
 fi
 MODE="$(nvpmodel -q 2>/dev/null | grep -i 'Power Mode' | head -1)"
 echo "$MODE" | grep -qi MAXN && ok "power mode: $MODE" || bad "power mode is not MAXN: $MODE"
