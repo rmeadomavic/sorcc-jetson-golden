@@ -172,11 +172,11 @@ if [[ "${L4T_MAJOR:-0}" -ge 38 || "${VERSION_ID:-}" == 24.04 ]]; then
 fi
 if [[ "${L4T_MAJOR:-0}" != 36 ]]; then
   die "Unsupported Jetson Linux version: ${L4T_VERSION:-unknown}." \
-    "This kit needs JetPack 6.2.x (Jetson Linux 36.4 or newer). See docs/reflash-jetpack6-nvme.md."
+    "This kit needs JetPack 6.2.x (Jetson Linux 36.4.3 or newer). See docs/reflash-jetpack6-nvme.md."
 fi
-L4T_MINOR="$(cut -d. -f2 <<<"$L4T_VERSION")"
-if (( ${L4T_MINOR:-0} < 4 )); then
-  die "Jetson Linux $L4T_VERSION is too old (JetPack 6.0). This kit needs JetPack 6.2.x (36.4.3 or newer)." \
+# JetPack 6.2 (36.4.3) is the first release with Super mode; 6.0 and 6.1 are 36.3 and 36.4.0.
+if [[ "$(printf '%s\n' 36.4.3 "$L4T_VERSION" | sort -V | sed -n 1p)" != 36.4.3 ]]; then
+  die "Jetson Linux $L4T_VERSION is too old (JetPack 6.0 or 6.1). This kit needs JetPack 6.2.x (36.4.3 or newer)." \
     "See docs/reflash-jetpack6-nvme.md."
 fi
 [[ "$MODEL" == *"Orin Nano"* ]] || warn "Built and tested on the Orin Nano Super dev kit; this board is '$MODEL'."
