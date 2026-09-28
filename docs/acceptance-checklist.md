@@ -14,7 +14,7 @@ sudo /opt/sorcc/sorcc-jetson-smoke-test.sh
 Pass: `PASS 24  WARN 1  FAIL 0`, or `PASS 25` with a person in front of the camera. The test
 drives the kit the way a student does and checks real outputs, not just the absence of errors:
 
-- JetPack version (7.2+ native build or 6.2.x Docker build), MAXN power mode, camera, model files, desktop shortcut
+- JetPack 7 native build (or the 6.2.x Docker fallback), MAXN power mode, camera, model files, desktop shortcut
 - Hydra's switched-off features are still off
 - Detection: live camera frame, detector running, FPS reported
 - Language: a real streamed answer with token and timing metrics
@@ -63,7 +63,7 @@ ls -la ~/.ssh 2>/dev/null
 
 | Gate | Required result |
 |---|---|
-| Firmware | JetPack 7.2+ (native build) or 6.2.x (Docker build), the same on every kit in the class; no pending reboot notice |
+| Firmware | JetPack 7.2.1+ (or the 6.2.x fallback), the same on every kit in the class; no pending reboot notice |
 | Power | MAXN_SUPER; GPU maximum 1020 MHz (`cat /sys/devices/platform/*gpu*/devfreq/*/max_freq` shows `1020000000`) |
 | Services | launcher running (and Docker, on JetPack 6); `systemctl --failed` empty; the three tools start only on demand |
 | Privacy | section 3 clean |
@@ -84,7 +84,7 @@ sudo systemctl poweroff
 
 Wait for the board to finish shutting down before you pull power.
 
-## Known-good numbers (2026-07 build, JetPack 6.2, microSD)
+## Known-good numbers (2026-07 build, JetPack 6.2, microSD; JetPack 7 numbers still to be recorded)
 
 - Detection: 34 to 38 FPS, 23 to 26 ms inference
 - Imagery START HERE: 46 to 50 seconds for the first image

@@ -112,7 +112,7 @@ Common causes:
 ## Imagery: "CUDA out of memory" or very slow
 
 Keep the resolution at 256 x 256 and the batch size at 1. Close extra browser tabs. From the
-launcher, select **Stop All** and start Imagery again. That restarts the container and
+launcher, select **Stop All** and start Imagery again. That restarts ComfyUI and
 compacts memory.
 
 ## Language is slow

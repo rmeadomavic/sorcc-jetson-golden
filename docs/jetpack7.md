@@ -36,7 +36,7 @@ It uses the same environment and models as `install.sh`, so the downloads are no
 it leaves no services running. The full output is in `/var/log/sorcc-jetpack7-test.log`, and the
 rendered test picture is in `/opt/sorcc/comfyui/output/`.
 
-If it recommends the JetPack 6 backup, reflash with [reflash-jetpack6-nvme.md](reflash-jetpack6-nvme.md).
+If it recommends the JetPack 6 fallback, reflash with [reflash-jetpack6-nvme.md](reflash-jetpack6-nvme.md).
 
 ## Super mode
 
