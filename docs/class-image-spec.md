@@ -36,7 +36,7 @@ demo code, and blur the module boundary students are being taught.
 
 | Layer | Locked value |
 |-------|--------------|
-| Base | JetPack 7.2+ (Jetson Linux r39, Ubuntu 24.04), native build, once `scripts/jetpack7-test.sh` passes; backup JetPack 6.2.x (Jetson Linux 36.4.3 or newer within R36, Ubuntu 22.04), Docker build. One version per class. NVMe or microSD, MAXN_SUPER; each unit keeps its own Linux account. JetPack 7 cannot run the JetPack 6 containers (CUDA error 801), so it uses no Docker |
+| Base | JetPack 7.2.1+ (Jetson Linux r39, Ubuntu 24.04), native build. Fallback only: JetPack 6.2.x (Jetson Linux 36.4.3+, Ubuntu 22.04), Docker build. One version per class. NVMe or microSD, MAXN_SUPER; each unit keeps its own Linux account. JetPack 7 cannot run the JetPack 6 containers (CUDA error 801), so it uses no Docker |
 | Power | 4S vbat direct to Orin Nano DC input (9-20 V window); motors on a separate rail |
 | LLM | Ollama 0.34.4, CPU only, 4K context, `qwen3:4b-instruct` (swapped from `llama3.2:3b` on 2026-08-03; Meta AUP prohibits military use; never the plain `qwen3:4b` thinking alias) with the local streaming training UI: visible execution stages, token and timing metrics, session context, and a conditional reasoning panel |
 | Imagery | ComfyUI v0.19.3. JetPack 7: native in `/opt/sorcc/venv` (PyTorch 2.11, CUDA 13.0, `jetpack7/requirements.lock`). JetPack 6: `comfyui-sorcc:latest`, built on each kit from `comfyui/Dockerfile`: `dustynv/pytorch:2.7-r36.4.0` (PyTorch 2.7, CUDA 12.6) + `comfyui/requirements.lock`. Both run with `--lowvram --cpu-vae --disable-dynamic-vram`; auto-loaded 256px START HERE workflow, quality workflow, cheat sheet; SD 1.5 + DreamShaper 8 + RevAnimated 1.2.2 + 5 LoRAs including LCM (`comfyui/models.txt`) |
@@ -63,8 +63,8 @@ hostname, Linux account, machine ID, SSH host keys, and network profile.
 
 The repeatable sequence:
 
-1. Run `sudo ./scripts/jetpack7-test.sh` on one kit. If it passes, build every kit on
-   JetPack 7.2+; if not, reflash every kit to JetPack 6.2.x (`docs/reflash-jetpack6-nvme.md`).
+1. Confirm JetPack 7.2.1+ (Super configuration). Optionally run `sudo ./scripts/jetpack7-test.sh`
+   on the first kit.
 2. Run `sudo ./install.sh HYDRA-N` with the kit's callsign. It installs Chromium, Super mode,
    Ollama and the model, Hydra and ComfyUI (JetPack 7: pinned sources and one Python
    environment; JetPack 6: Docker, the NVIDIA runtime, the pinned Hydra image, and the ComfyUI

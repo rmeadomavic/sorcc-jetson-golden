@@ -1,11 +1,12 @@
 # JetPack 7 build
 
-The kit can be built on JetPack 7.2 or newer (Jetson Linux r38/r39, Ubuntu 24.04), the release
-NVIDIA's download page now offers first. The JetPack 6 build stays available as the backup.
+The kit is built on JetPack 7.2.1 or newer (Jetson Linux r39, Ubuntu 24.04). The JetPack 6
+Docker build is still in `install.sh` as a fallback only, for the case where JetPack 7 fails on
+the GPU ([reflash-jetpack6-nvme.md](reflash-jetpack6-nvme.md)).
 
 ## How it differs from the JetPack 6 build
 
-| | JetPack 7 | JetPack 6 (backup) |
+| | JetPack 7 | JetPack 6 (fallback) |
 |---|---|---|
 | ComfyUI and Hydra | Run natively from one Python environment, `/opt/sorcc/venv` | Run in Docker |
 | PyTorch | 2.11 for CUDA 13.0, the official pytorch.org ARM build | 2.7 (ComfyUI image) and 2.4 (Hydra image), Jetson builds for CUDA 12.6 |
@@ -16,9 +17,9 @@ NVIDIA's download page now offers first. The JetPack 6 build stays available as 
 The JetPack 6 Docker images cannot use the GPU on JetPack 7 (their CUDA 12.6 cannot talk to
 the JetPack 7 driver; CUDA error 801). That is why JetPack 7 does not use Docker at all.
 
-## The JetPack 7 test
+## The JetPack 7 test (optional)
 
-Run it once, on one Jetson, before building kits:
+A first-kit check. `install.sh` already runs the GPU math check on every kit.
 
 ```bash
 sudo ./scripts/jetpack7-test.sh

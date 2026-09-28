@@ -1,6 +1,6 @@
 # Reflash a Jetson with JetPack 6.2.x on NVMe
 
-This is the backup path. Use it only when the JetPack 7 test (`sudo ./scripts/jetpack7-test.sh`)
+This is the fallback path; the kit is built on JetPack 7. Use this only when the JetPack 7 test (`sudo ./scripts/jetpack7-test.sh`)
 ends with **RECOMMENDATION: use the JetPack 6 backup**, or when a kit is on a JetPack version
 the installer does not support (anything other than 7.2+ or 6.2.x).
 
@@ -8,7 +8,7 @@ the installer does not support (anything other than 7.2+ or 6.2.x).
 
 JetPack 7.2 (Jetson Linux r39, Ubuntu 24.04, CUDA 13) is what NVIDIA's download page offers
 first, and the kit now installs on it natively (see [jetpack7.md](jetpack7.md)). JetPack 6.2.x
-is the proven build from the 2026-07 class and stays as the backup for when the JetPack 7 test
+is the proven build from the 2026-07 class and stays as the fallback for when JetPack 7
 fails on the GPU math, image, or detection checks.
 
 Do not mix versions in one class: if the test sends you here, reflash every kit.

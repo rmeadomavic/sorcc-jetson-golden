@@ -16,8 +16,7 @@ Jetson to copy from.
 
 - Jetson Orin Nano Super Developer Kit (8 GB)
 - NVMe SSD, 256 GB or larger (a 128 GB+ microSD also works; NVMe is faster)
-- **JetPack 7.2 or newer** (NVIDIA's current release), or **JetPack 6.2.x** as the backup.
-  See step 1.
+- **JetPack 7.2.1 or newer** (NVIDIA's current release). See step 1.
 - USB webcam (Logitech C270 or similar), monitor, keyboard, mouse
 - Internet on the Jetson, wired Ethernet if possible. Each kit downloads about 30 GB.
 
@@ -29,17 +28,9 @@ Open a terminal on the Jetson and run:
 lsb_release -rs; dpkg-query -W -f '${Version}\n' nvidia-l4t-core
 ```
 
-| You see | It means | Do this |
-|---|---|---|
-| `24.04` and `39.x` (or `38.x`) | JetPack 7 | Go to step 2, then run the **JetPack 7 test** (step 2b) once before building kits |
-| `22.04` and `36.4.3` or higher (for example 36.4.7, 36.5.0) | JetPack 6.2.x | Go to step 2, then straight to step 3 |
-| `22.04` and anything below `36.4.3` | JetPack 5, 6.0, or 6.1 | Reflash: JetPack 7 with NVIDIA's USB installer, or JetPack 6.2.x with [docs/reflash-jetpack6-nvme.md](docs/reflash-jetpack6-nvme.md) |
-
-**JetPack 7 or JetPack 6?** Both build the same kit. On JetPack 7, ComfyUI and Hydra run
-natively from a pinned Python environment. On JetPack 6 they run in Docker. JetPack 7 is
-newer and needs no reflash if the Jetsons already have it, but it has not been through a
-class yet, so the test in step 2b decides. If the test fails, reflash to JetPack 6 and use
-that. More detail, including Super mode, is in [docs/jetpack7.md](docs/jetpack7.md).
+You want `24.04` and `39.x`. Anything else: install JetPack 7.2.1 or newer with NVIDIA's USB
+installer or SDK Manager (the Orin Nano **Super** configuration, so the GPU gets Super mode;
+see [docs/jetpack7.md](docs/jetpack7.md#super-mode)).
 
 ## Step 2: Put this repo on the Jetson
 
@@ -49,23 +40,9 @@ git clone https://github.com/rmeadomavic/sorcc-jetson-golden.git
 cd sorcc-jetson-golden
 ```
 
-## Step 2b (JetPack 7 only): Run the JetPack 7 test on one Jetson
-
-```bash
-sudo ./scripts/jetpack7-test.sh
-```
-
-It takes 20 to 30 minutes, mostly downloads. It checks Super mode, checks that the GPU
-computes correctly, renders a real image in ComfyUI and makes sure it is not blank, and runs
-the detector on a sample video. It ends with one line:
-
-- `RECOMMENDATION: use JetPack 7`: build every kit on JetPack 7 (step 3). The downloads
-  are reused, so this Jetson's install is quicker.
-- `RECOMMENDATION: use the JetPack 6 backup`: reflash with
-  [docs/reflash-jetpack6-nvme.md](docs/reflash-jetpack6-nvme.md), then continue at step 3.
-
-The result is saved to `/var/log/sorcc-jetpack7-test.log`. Send that file if you want a second
-opinion.
+Optional, on the first kit only: `sudo ./scripts/jetpack7-test.sh` checks Super mode, GPU
+math, a real ComfyUI render, and detection speed in about 30 minutes, and leaves its downloads
+for the installer. The installer runs the GPU check on every kit anyway.
 
 ## Step 3: Run the installer
 
@@ -82,11 +59,10 @@ sudo ./install.sh HYDRA-1
   run the same command again. Finished work is skipped, so re-running is quick.
 - The full log is saved to `/var/log/sorcc-install.log`.
 
-What it installs, in order: system packages (plus Docker and the NVIDIA container runtime on
-JetPack 6); Chromium; Super power mode; Ollama and the language model; Hydra, YOLO weights, and
-the class config; ComfyUI, 3 checkpoints, and 5 LoRAs; then the launcher, services, wallpaper,
-and desktop shortcut. It picks the JetPack 7 or JetPack 6 build by itself and checks every
-download against a pinned SHA-256.
+What it installs, in order: system packages; Chromium; Super power mode; Ollama and the
+language model; Hydra, YOLO weights, and the class config; ComfyUI, 3 checkpoints, and 5 LoRAs;
+then the launcher, services, wallpaper, and desktop shortcut. ComfyUI and Hydra run natively
+from one pinned Python environment, and every download is checked against a pinned SHA-256.
 
 ## Step 4: Reboot and run the acceptance test
 
@@ -131,6 +107,8 @@ keeps its own hostname, account, and keys. Never copy a disk from one Jetson to 
 - One heavy tool at a time. 8 GB is not enough for two. The launcher enforces this.
 - Keep ComfyUI images at 256 x 256. Bigger runs out of memory.
 - Build every kit in a class on the same JetPack version, and do not change it during a course.
+- Fallback only: if JetPack 7 ever fails on the GPU, the installer also supports JetPack 6.2.x
+  in Docker ([docs/reflash-jetpack6-nvme.md](docs/reflash-jetpack6-nvme.md)).
 
 ## If something goes wrong
 
@@ -142,17 +120,17 @@ See [docs/troubleshooting.md](docs/troubleshooting.md). To send someone the logs
 | Path | What it is |
 |---|---|
 | `install.sh` | The installer. Start here. |
-| `scripts/jetpack7-test.sh` | The JetPack 7 test (step 2b) |
-| `jetpack7/` | The pinned Python packages for the JetPack 7 build (`requirements.lock`) |
-| `comfyui/` | ComfyUI image recipe for JetPack 6 (`Dockerfile`, `requirements.lock`), model list with checksums (`models.txt`), the three class workflows, and the `sorcc_student` helper that opens START HERE |
+| `scripts/jetpack7-test.sh` | Optional first-kit check (step 2) |
+| `jetpack7/` | The pinned Python packages (`requirements.lock`) |
+| `comfyui/` | model list with checksums (`models.txt`), the three class workflows, and the `sorcc_student` helper that opens START HERE; `Dockerfile` and `requirements.lock` are the JetPack 6 fallback |
 | `hydra/config.ini` | Hydra class config: observe-and-report only, everything else switched off |
 | `scripts/sorcc_launcher.py` | The launcher page on port 8090, including the built-in chat page |
 | `scripts/sorcc-jetson-smoke-test.sh` | Acceptance test |
 | `scripts/sorcc-diag` | Collects logs for troubleshooting |
-| `scripts/sorcc-lib.sh` | Helpers shared by the installer and the JetPack 7 test |
+| `scripts/sorcc-lib.sh` | Helpers shared by the installer and the test |
 | `scripts/refresh_workflow_copy.py` | Rewrites the student text inside the workflows |
 | `assets/` | Wallpaper and two sample detection videos |
-| `docs/` | JetPack 7 notes, JetPack 6 reflash guide, troubleshooting, acceptance checklist, class scope |
+| `docs/` | JetPack 7 notes (Super mode, versions), JetPack 6 fallback, troubleshooting, acceptance checklist, class scope |
 | `archive/` | Old build methods, kept for the record. Do not use. |
 
 ## What gets installed where
@@ -161,8 +139,8 @@ See [docs/troubleshooting.md](docs/troubleshooting.md). To send someone the logs
 |---|---|---|---|
 | Launcher | `sorcc-launcher.service`, always on | 8090 | `/opt/sorcc/sorcc_launcher.py` |
 | Language | `ollama.service`, on demand, CPU only | 11434 | Ollama 0.34.4, model in `/usr/share/ollama` |
-| Imagery | `comfyui.service`, on demand | 8188 | `/opt/sorcc/comfyui/` (data); JetPack 7: code in `/opt/sorcc/app/comfyui`, JetPack 6: Docker image `comfyui-sorcc:latest` |
-| Detection | `hydra-detect.service`, on demand | 8080 | `/opt/sorcc/hydra/` (config, weights); JetPack 7: code in `/opt/sorcc/app/hydra`, JetPack 6: pinned Docker image |
+| Imagery | `comfyui.service`, on demand | 8188 | `/opt/sorcc/comfyui/` (data), `/opt/sorcc/app/comfyui` (code) |
+| Detection | `hydra-detect.service`, on demand | 8080 | `/opt/sorcc/hydra/` (config, weights), `/opt/sorcc/app/hydra` (code) |
 
-On JetPack 7 both run from the Python environment in `/opt/sorcc/venv`. Only the launcher
-(and Docker, on JetPack 6) start at boot. The launcher starts and stops the other three.
+ComfyUI and Hydra both run from the Python environment in `/opt/sorcc/venv`. Only the launcher
+starts at boot. The launcher starts and stops the other three.
