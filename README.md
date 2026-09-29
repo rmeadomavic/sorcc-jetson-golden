@@ -120,6 +120,7 @@ See [docs/troubleshooting.md](docs/troubleshooting.md). To send someone the logs
 | Path | What it is |
 |---|---|
 | `install.sh` | The installer. Start here. |
+| `AGENTS.md`, `CLAUDE.md` | Rules for an AI agent (Codex, Claude Code) helping with setup |
 | `scripts/jetpack7-test.sh` | Optional first-kit check (step 2) |
 | `jetpack7/` | The pinned Python packages (`requirements.lock`) |
 | `comfyui/` | model list with checksums (`models.txt`), the three class workflows, and the `sorcc_student` helper that opens START HERE; `Dockerfile` and `requirements.lock` are the JetPack 6 fallback |
